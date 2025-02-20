@@ -53,7 +53,6 @@ class ThreadViewModel : ViewModel() {
 
     private var threadListener: ChildEventListener? = null
     private var isListening = false
-  hello world
 
     fun saveThread(
         uid: String?,
