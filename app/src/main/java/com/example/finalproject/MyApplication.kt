@@ -1,17 +1,21 @@
 package com.example.finalproject
 
 import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import com.onesignal.OneSignal
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.auth.FirebaseUser
+import kotlin.text.clear
 
 
 class MyApplication : Application() {
 
     private val ONESIGNAL_APP_ID = "f63b86c5-27be-4584-bc86-08255699eb18" // Replace with your OneSignal App ID
     private var currentUser: FirebaseUser? = null
+    private lateinit var sharedPreferences : SharedPreferences
 
     override fun onCreate() {
         super.onCreate()
@@ -28,7 +32,18 @@ class MyApplication : Application() {
         // Initialize Firebase Authentication
         val auth = FirebaseAuth.getInstance()
 
+
+        sharedPreferences = getSharedPreferences("users", Context.MODE_PRIVATE)
         // Set a listener for authentication state changes
+
+        val isFirstLaunch = sharedPreferences.getBoolean("is_first_launch",true)
+
+        if(isFirstLaunch){
+            clearAppData()
+            sharedPreferences.edit().putBoolean("is_first_launch", false).apply()
+        }
+
+
         auth.addAuthStateListener { firebaseAuth ->
             currentUser = firebaseAuth.currentUser
             Log.d("OneSignal", "AuthStateListener triggered.")
@@ -75,5 +90,13 @@ class MyApplication : Application() {
             .addOnFailureListener { e ->
                 Log.e("OneSignal", "saveOneSignalIdToDatabase: Failed to save OneSignal ID for user: $userId", e)
             }
+    }
+
+    private fun clearAppData() {
+        // Clear SharedPreferences
+        sharedPreferences.edit().clear().apply()
+
+        // Clear other data (e.g., internal storage files) if needed
+        // ...
     }
 }

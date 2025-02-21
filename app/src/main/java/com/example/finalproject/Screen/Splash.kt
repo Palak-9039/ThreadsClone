@@ -43,7 +43,7 @@ fun splash(navController: NavController,
 
             if(firebasUser != null){
 //                authViewModel.saveOneSignalPlayerId().join()
-                authViewModel.saveOneSignalIdToDatabase()
+//                authViewModel.saveOneSignalIdToDatabase()
                     navController.navigate(Screens.Home.route) {
                         popUpTo(Screens.Splash.route) {
                             inclusive = true

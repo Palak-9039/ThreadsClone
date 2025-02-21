@@ -178,6 +178,7 @@ class AuthViewModel : ViewModel() {
 
     fun SignOut(){
         auth.signOut()
+        FirebaseAuth.getInstance().signOut()
         _firebaseUser.postValue(null)
     }
 
