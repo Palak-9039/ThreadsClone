@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.finalproject.MyApplication
 import com.example.finalproject.R
 import com.example.finalproject.ViewModel.AuthViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -41,7 +42,8 @@ fun splash(navController: NavController,
             delay(1500)
 
             if(firebasUser != null){
-                authViewModel.saveOneSignalPlayerId().join()
+//                authViewModel.saveOneSignalPlayerId().join()
+                authViewModel.saveOneSignalIdToDatabase()
                     navController.navigate(Screens.Home.route) {
                         popUpTo(Screens.Splash.route) {
                             inclusive = true
