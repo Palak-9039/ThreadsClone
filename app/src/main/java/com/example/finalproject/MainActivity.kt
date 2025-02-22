@@ -69,19 +69,6 @@ class MainActivity : ComponentActivity() {
                     navigation()
                 }
             }
-
-//            val lifecycleOwner = LocalLifecycleOwner.current
-//            DisposableEffect(lifecycleOwner) {
-//                val observer = LifecycleEventObserver { _, event ->
-//                    when (event) {
-//                        Lifecycle.Event.ON_START -> startListening()
-//                        Lifecycle.Event.ON_STOP -> stopListening()
-//                        else -> {}
-//                    }
-//                }
-//                lifecycleOwner.lifecycle.addObserver(observer)
-//                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-//            }
         }
     }
 

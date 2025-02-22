@@ -1,43 +1,22 @@
 package com.example.finalproject.ViewModel
 
-import android.annotation.SuppressLint
-import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.finalproject.Model.SharedPref
-import com.example.finalproject.Model.ThreadData
 import com.example.finalproject.Model.User
-import com.example.finalproject.NotificationManager
 import com.example.finalproject.Util.NotificationHelper
 import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
-import com.onesignal.OneSignal
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.DataOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 class UserViewModel : ViewModel() {
     var db = FirebaseDatabase.getInstance()
@@ -46,22 +25,19 @@ class UserViewModel : ViewModel() {
 
 
     private val _userData = MutableLiveData<User>()
-    val userData : LiveData<User> = _userData
+    val userData: LiveData<User> = _userData
 
     private var _followersList = MutableLiveData<List<String>>()
-     var followersList : LiveData<List<String>> = _followersList
+    var followersList: LiveData<List<String>> = _followersList
 
     private var _followingList = MutableLiveData<List<String>>()
-     var followingList : LiveData<List<String>> = _followingList
+    var followingList: LiveData<List<String>> = _followingList
 
     private var _isLoading = MutableLiveData<Boolean>()
-    var isLoading : LiveData<Boolean> = _isLoading
+    var isLoading: LiveData<Boolean> = _isLoading
 
 
-
-
-
-    fun fetchUser(userId : String) {
+    fun fetchUser(userId: String) {
         _isLoading.value = true
         users.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -79,8 +55,6 @@ class UserViewModel : ViewModel() {
 
         })
     }
-
-
 
 
     fun followUser(user_id: String, current_id: String) {
@@ -116,13 +90,13 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    fun getFollowers(user_id: String){
+    fun getFollowers(user_id: String) {
         _isLoading.postValue(true)
 
         firestore.collection("Followers").document(user_id)
             .get()
-            .addOnSuccessListener{ value ->
-                var list = value?.get("followers_id") as?List<String>?: listOf()
+            .addOnSuccessListener { value ->
+                var list = value?.get("followers_id") as? List<String> ?: listOf()
                 _followersList.postValue(list)
                 _isLoading.postValue(false)
                 Log.d("UserViewModel", "Followers fetched successfully: $list")
@@ -134,13 +108,13 @@ class UserViewModel : ViewModel() {
             }
     }
 
-    fun getFollowing(user_id: String){
+    fun getFollowing(user_id: String) {
         _isLoading.postValue(true)
 
         firestore.collection("Followings").document(user_id)
             .get()
-            .addOnSuccessListener{value ->
-                val list = value?.get("following_id") as?List<String> ?: listOf()
+            .addOnSuccessListener { value ->
+                val list = value?.get("following_id") as? List<String> ?: listOf()
                 _followingList.postValue(list)
                 _isLoading.postValue(false)
                 Log.d("UserViewModel", "Following fetched successfully: $list")
@@ -152,37 +126,35 @@ class UserViewModel : ViewModel() {
     }
 
 
-
-
     // for new followers notifications
 
-    fun listenForNewFollowers(userId: String,context: Context) {
+    fun listenForNewFollowers(userId: String, context: Context) {
 
         val userRef = firestore.collection("Followers").document(userId)
         var isInitialSnapshot = true
 
         userRef.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null || !snapshot.exists()){
+            if (error != null || snapshot == null || !snapshot.exists()) {
                 Log.d("OneSignal", "Error listening for new followers: ${error?.message}")
                 return@addSnapshotListener
             }
 
-            if(isInitialSnapshot){
-                Log.d("onesignal","Ignoring initial snapshot for followers")
+            if (isInitialSnapshot) {
+                Log.d("onesignal", "Ignoring initial snapshot for followers")
                 isInitialSnapshot = false
                 return@addSnapshotListener
             }
 
             val followers = snapshot.data?.get("followers_id") as? List<String>
-            Log.e("onesignal","followers : ${followers}")
-            if(followers == null || followers.isEmpty()){
+            Log.e("onesignal", "followers : ${followers}")
+            if (followers == null || followers.isEmpty()) {
                 Log.d("OneSignal", "No followers found for user: $userId")
                 return@addSnapshotListener
             }
 
 
             val latestFollowerId = followers.lastOrNull()
-            if(latestFollowerId == null){
+            if (latestFollowerId == null) {
                 Log.d("OneSignal", "No latest follower found for user: $userId")
                 return@addSnapshotListener
             }
@@ -190,7 +162,7 @@ class UserViewModel : ViewModel() {
             Log.d("OneSignal", "New follower detected: $latestFollowerId for user: $userId")
 
 
-           users.child(latestFollowerId).get().addOnSuccessListener {
+            users.child(latestFollowerId).get().addOnSuccessListener {
                 val followerName = it.child("userName").getValue(String::class.java)
                 Log.e("onesignal", "follower name : $followerName")
                 // Get follower's name
@@ -212,12 +184,11 @@ class UserViewModel : ViewModel() {
                     .addOnFailureListener {
                         Log.e("OneSignal", "Failed to get OneSignal ID", it)
                     }
-            }.addOnFailureListener{
-                Log.d("onesignal","couldn't get followers name")
+            }.addOnFailureListener {
+                Log.d("onesignal", "couldn't get followers name")
             }
         }
-        }
-
+    }
 
 
 }
