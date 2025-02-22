@@ -54,27 +54,37 @@ class ThreadViewModel : ViewModel() {
     private var threadListener: ChildEventListener? = null
     private var isListening = false
 
+    @SuppressLint("NewApi")
     fun saveThread(
         uid: String?,
         imageUrl: String? = "",
         thread: String,
         onSuccess: (Boolean) -> Unit
     ) {
+        Log.e("threadviewmodel","save thread mein aaya")
         _isLoading.value = true
         viewModelScope.launch {
+            val currentDateTime = LocalDateTime.now(ZoneOffset.UTC)
+            // Format the timestamp as an ISO 8601 string
+            val formatter = DateTimeFormatter.ISO_DATE_TIME
+            val threadTimestamp = currentDateTime.format(formatter)
+
             val threadObject =
-                ThreadData(uid, imageUrl, thread, System.currentTimeMillis().toString())
+                ThreadData(uid, imageUrl, thread, threadTimestamp)
 
             threadRef.child(threadRef.push().key!!).setValue(threadObject)
                 .addOnSuccessListener {
                     onSuccess(true)
                     _isPosted.value = true
                     _isLoading.value = false
+                    Log.e("threadviewmodel","save ho gaya thread")
+
                 }
                 .addOnFailureListener {
                     onSuccess(false)
                     _isPosted.value = false
                     _isLoading.value = false
+                    Log.e("threadviewmodel","save thread nhi ho paya")
                 }
         }
     }
@@ -92,6 +102,7 @@ class ThreadViewModel : ViewModel() {
                             }
                             _threadData.postValue(resultList)
                             _isLoading.postValue(false)
+                            Log.e("threadviewmodel","threads fetch ho gyi")
                         }
 
 
@@ -113,30 +124,40 @@ class ThreadViewModel : ViewModel() {
     @SuppressLint("NewApi")
     fun listenForNewThreads(context : Context) {
 
-        if (isListening) return
-        Log.d("onesignal","listenForNewFollowers mein aaya")
+        if (isListening) {
+            Log.e("threadviewmodel","listenForNewFollowers se wapas gaya")
+//            return
+        }
 
-        threadListener?.let { threadRef.removeEventListener(it) } // Remove any existing listener
+
+        Log.e("threadviewmodel","listenForNewthreads mein aaya")
+
+        threadListener?.let {
+            threadRef.removeEventListener(it)
+            isListening = false
+        } // Remove any existing listener
 
 
         var lastNotifiedTimestamp = SharedPref.getLastNotifiedTimestamp(context)
 
         if(lastNotifiedTimestamp.isEmpty() || lastNotifiedTimestamp.equals("")){
-            Log.d("onesignal","last timestamp : ${lastNotifiedTimestamp}")
+            Log.d("threadviewmodel","last timestamp : ${lastNotifiedTimestamp}")
 
             val currentDateTime = LocalDateTime.now(ZoneOffset.UTC)
             val formatter = DateTimeFormatter.ISO_DATE_TIME
             lastNotifiedTimestamp = currentDateTime.format(formatter)
             SharedPref.saveLastNotifiedTimestamp(context ,lastNotifiedTimestamp)
-            Log.d("onesignal","save ke baad ${SharedPref.getLastNotifiedTimestamp(context)}")
+            Log.d("threadviewmodel","save ke baad ${SharedPref.getLastNotifiedTimestamp(context)}")
 
-            Log.d("OneSignal", "First run detected. Setting initial timestamp.")
+            Log.d("threadviewmodel", "First run detected. Setting initial timestamp.")
         }
 
-        Log.d("OneSignal", "Started listening for new threads")  // Debug log
+        Log.d("threadviewmodel", "Started listening for new threads")  // Debug log
 
         threadListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("threadviewmodel", "on child added mein aaya")  // Debug log
+
                 // Access threadData inside threadId
                 val threadData = snapshot.getValue(ThreadData::class.java) ?: return
                 val threadTimestamp = threadData.timestamp
@@ -144,12 +165,15 @@ class ThreadViewModel : ViewModel() {
                 val threadTitle = threadData.thread
                 val userId = threadData.uid ?: return
 
+                Log.d("threadviewmodel", " thread data : $threadTitle")  // Debug log
+
 
                 if (threadTimestamp <= lastNotifiedTimestamp) {
+                    Log.d("threadviewmodel", "Thread filtered out due to timestamp")  // Debug log
                     return
                 }
 
-                Log.d("onesignal", "else mein aa gaye")
+                Log.d("threadviewmodel", "else mein aa gaye")
                 lastNotifiedTimestamp = threadTimestamp
                 SharedPref.saveLastNotifiedTimestamp(context, lastNotifiedTimestamp)
 
@@ -160,18 +184,18 @@ class ThreadViewModel : ViewModel() {
                         firestore.collection("Followers").document(userId).get()
                             .addOnSuccessListener { followersDoc ->
                                 if (!followersDoc.exists()) {
-                                    Log.d("oneSignal", "folllowers esixt nahi karta")
+                                    Log.d("threadviewmodel", "folllowers esixt nahi karta")
                                     return@addOnSuccessListener
                                 }
 
-                                Log.d("oneSignal", "user id : $userId")
+                                Log.d("threadviewmodel", "user id : $userId")
                                 val followers =
                                     followersDoc?.get("followers_id") as? List<String> ?: listOf()
-                                Log.d("onesignal", "list of followers : ${followers}")
+                                Log.d("threadviewmodel", "list of followers : ${followers}")
 
 
                                 followers.forEach { followerId ->
-                                    Log.d("OneSignal", "follower id : ${followerId}")
+                                    Log.e("threadviewmodel", "follower id : ${followerId}")
 
 
                                     // Get OneSignal ID of the follower from Realtime Database
@@ -179,14 +203,14 @@ class ThreadViewModel : ViewModel() {
                                         .addOnSuccessListener { oneSignalSnapshot ->
                                             val oneSignalId =
                                                 oneSignalSnapshot.getValue(String::class.java)
-                                            Log.d("OneSignal", "onesignal id : ${oneSignalId}")
+                                            Log.e("threadviewmodel", "onesignal id : ${oneSignalId}")
                                             if (!oneSignalId.isNullOrEmpty()) {
-                                                Log.d(
-                                                    "OneSignal",
+                                                Log.e(
+                                                    "threadviewmodel",
                                                     "Sending notification to: $followerId ($oneSignalId)"
                                                 ) // Debug log
 
-                                                sendNotificationFromthreads(
+                                                notificationHelper.sendNotification(
                                                     title = "New Thread Posted!",
                                                     message = "Check out the latest thread by : ${threadTitle}",
                                                     playerId = oneSignalId
@@ -195,7 +219,7 @@ class ThreadViewModel : ViewModel() {
                                         }
                                 }
                             }.addOnFailureListener {
-                                Log.d("OneSignal", "Failed to fetch followers", it) // Debug log
+                                Log.e("OneSignal", "Failed to fetch followers", it) // Debug log
 
                             }
 
@@ -214,9 +238,9 @@ class ThreadViewModel : ViewModel() {
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
             override fun onCancelled(error: DatabaseError) {
-                Log.d("OneSignal", "data base errror : ${error.message}") // Debug log
-
-            }
+                Log.e("OneSignal", "data base errror : ${error.message}") // Debug log
+                isListening = false
+             }
         }
         threadRef.orderByChild("timestamp").addChildEventListener(threadListener!!)
         isListening = true

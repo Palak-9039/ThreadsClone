@@ -39,13 +39,14 @@ class MainActivity : ComponentActivity() {
     private val userViewModel: UserViewModel by viewModels()
     private val threadsViewModel: ThreadViewModel by viewModels()
     private lateinit var auth: FirebaseAuth
+    private var isListening = false
+
 
     // Register the permission callback
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
                 // Permission is granted. Start listening for followers.
-                startListening()
             } else {
                 // Permission is denied. Handle accordingly (e.g., show a message).
                 // You might want to explain why the permission is needed.
@@ -69,18 +70,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val lifecycleOwner = LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    when (event) {
-                        Lifecycle.Event.ON_START -> startListening()
-                        Lifecycle.Event.ON_STOP -> stopListening()
-                        else -> {}
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-            }
+//            val lifecycleOwner = LocalLifecycleOwner.current
+//            DisposableEffect(lifecycleOwner) {
+//                val observer = LifecycleEventObserver { _, event ->
+//                    when (event) {
+//                        Lifecycle.Event.ON_START -> startListening()
+//                        Lifecycle.Event.ON_STOP -> stopListening()
+//                        else -> {}
+//                    }
+//                }
+//                lifecycleOwner.lifecycle.addObserver(observer)
+//                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+//            }
         }
     }
 
@@ -91,6 +92,10 @@ class MainActivity : ComponentActivity() {
         if (currentUser != null) {
             // User is signed in, check for notification permission
             checkNotificationPermission()
+            if (!isListening){
+                startListening()
+                isListening = true
+            }
         } else {
             // No user is signed in, handle accordingly (e.g., navigate to login screen)
         }

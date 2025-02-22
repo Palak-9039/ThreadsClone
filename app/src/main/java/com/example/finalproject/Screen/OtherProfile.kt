@@ -245,7 +245,7 @@ fun OtherPostItem(threadData : ThreadData,user: User){
                     fontSize = 16.sp
                 )
             }
-            Text(text = timestampToReadableTime(threadData.timestamp),
+            Text(text = threadData.timestamp,
                 fontSize = 12.sp,
                 color = Color.Gray,
                 modifier = Modifier

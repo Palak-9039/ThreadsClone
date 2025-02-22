@@ -143,42 +143,25 @@ class AuthViewModel : ViewModel() {
             }
     }
 
-//     fun saveOneSignalPlayerId() = viewModelScope.launch {
-//        OneSignal.getDeviceState()?.let { state ->
-//            if (state.isSubscribed) {
-//                val playerId = state.userId  // OneSignal Player ID
-//                val userId = auth.currentUser?.uid ?: return@launch
-//
-//                // Store OneSignal Player ID in Firestore
-//                database.getReference("users").child(userId)
-//                    .child("oneSignalId")
-//                    .setValue(playerId)
-//                    .addOnSuccessListener { Log.d("OneSignal", "Player ID saved!")  }
-//                    .addOnFailureListener{Log.d("OneSignal", "Failed to save Player ID", it) }
-//            }
-//        }
-//    }
+     fun saveOneSignalPlayerId() = viewModelScope.launch {
+        OneSignal.getDeviceState()?.let { state ->
+            if (state.isSubscribed) {
+                val playerId = state.userId  // OneSignal Player ID
+                val userId = auth.currentUser?.uid ?: return@launch
 
-
-    fun saveOneSignalIdToDatabase(userId: String, oneSignalId: String) {
-        Log.d("OneSignal", "saveOneSignalIdToDatabase: Attempting to save oneSignalId: $oneSignalId for userId: $userId")
-
-        val database = FirebaseDatabase.getInstance()
-        val userRef = database.getReference("users").child(userId)
-
-        userRef.child("oneSignalId").setValue(oneSignalId)
-            .addOnSuccessListener {
-                Log.d("OneSignal", "saveOneSignalIdToDatabase: OneSignal ID saved successfully for user: $userId")
+                // Store OneSignal Player ID in Firestore
+                database.getReference("users").child(userId)
+                    .child("oneSignalId")
+                    .setValue(playerId)
+                    .addOnSuccessListener { Log.d("OneSignal", "Player ID saved!")  }
+                    .addOnFailureListener{Log.d("OneSignal", "Failed to save Player ID", it) }
             }
-            .addOnFailureListener { e ->
-                Log.e("OneSignal", "saveOneSignalIdToDatabase: Failed to save OneSignal ID for user: $userId", e)
-            }
+        }
     }
 
 
     fun SignOut(){
         auth.signOut()
-        FirebaseAuth.getInstance().signOut()
         _firebaseUser.postValue(null)
     }
 
