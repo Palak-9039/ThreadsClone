@@ -1,31 +1,18 @@
 package com.example.finalproject.ViewModel
 
-import android.annotation.SuppressLint
 import android.util.Log
-import androidx.compose.ui.input.key.key
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.get
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.finalproject.Model.ThreadData
 import com.example.finalproject.Model.User
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.ktx.database
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -36,11 +23,11 @@ class HomeViewModel : ViewModel() {
     var users = db.getReference("users")
 
 
-    private var _threadAndUser = MutableLiveData<List<Pair<ThreadData,User>>>()
+    private var _threadAndUser = MutableLiveData<List<Pair<ThreadData, User>>>()
     var threadAndUser: LiveData<List<Pair<ThreadData, User>>> = _threadAndUser
 
     private var _isLoading = MutableLiveData<Boolean>()
-    var isLoading : LiveData<Boolean> = _isLoading
+    var isLoading: LiveData<Boolean> = _isLoading
 
 
     private val childEventListener = object : ChildEventListener {
@@ -82,7 +69,7 @@ class HomeViewModel : ViewModel() {
                         val user = fetchUser(it.uid!!)
                         withContext(Dispatchers.Main) {
                             val currentList = _threadAndUser.value.orEmpty().toMutableList()
-                            currentList.add(0,Pair(threadData, user))
+                            currentList.add(0, Pair(threadData, user))
                             _threadAndUser.value = currentList
                             _isLoading.postValue(false)
                         }
@@ -95,7 +82,37 @@ class HomeViewModel : ViewModel() {
         }
 
         override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-            Log.d("firebase","onChildChanged called")
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val threadId = snapshot.key
+                    Log.d("onChildChanged", "Thread changed: $threadId")
+                    val threadData = snapshot.getValue(ThreadData::class.java)
+                    threadData?.let { updatedThreadData ->
+                        Log.d("onChildChanged", "Updated thread data: $updatedThreadData")
+                        // Find the index of the thread in the current list
+                        val currentList = _threadAndUser.value.orEmpty().toMutableList()
+                        val index = currentList.indexOfFirst { it.first.threadId == threadId }
+
+                        if (index != -1) {
+                            Log.d("onChildChanged", "Found thread at index: $index")
+                            // Update the thread data in the list
+                            val user = currentList[index].second
+                            val updatedPair = Pair(updatedThreadData, user)
+                            currentList[index] = updatedPair
+
+                            // Update the LiveData on the main thread
+                            withContext(Dispatchers.Main) {
+                                Log.d("onChildChanged", "Updating LiveData with new list")
+                                _threadAndUser.value = currentList.toList() // Create a new list
+                            }
+                        } else {
+                            Log.w("onChildChanged", "Thread not found in list: $threadId")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("Firebase", "Error in onChildChanged: ${e.message}")
+                }
+            }
         }
 
         override fun onChildRemoved(snapshot: DataSnapshot) {
@@ -148,31 +165,31 @@ class HomeViewModel : ViewModel() {
     }
 
 
-
-    fun refreshData(){
-        viewModelScope.launch (Dispatchers.IO){
+    fun refreshData() {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoading.postValue(true)
                 val snapshot = threadRef.orderByChild("timestamp").get().await()
-                val threadUserList = mutableListOf<Pair<ThreadData,User>>()
+                val threadUserList = mutableListOf<Pair<ThreadData, User>>()
 
-                for (threadSnapshot in snapshot.children.reversed()){
+                for (threadSnapshot in snapshot.children.reversed()) {
                     val threadData = threadSnapshot.getValue(ThreadData::class.java)
                     threadData?.let {
                         val user = fetchUser(it.uid!!)
                         threadUserList.add(it to user)
                     }
                 }
-                withContext(Dispatchers.Main){
+                withContext(Dispatchers.Main) {
                     _threadAndUser.postValue(threadUserList)
                     _isLoading.postValue(false)
                 }
-            }catch (e:Exception){
-                Log.e("Firebase","Error refreshing threads: ${e.message}")
+            } catch (e: Exception) {
+                Log.e("Firebase", "Error refreshing threads: ${e.message}")
                 _isLoading.postValue(false)
             }
         }
     }
+
     private suspend fun fetchUser(uid: String): User = withContext(Dispatchers.IO) {
         try {
             val snapshot = users.child(uid).get().await()
@@ -184,8 +201,8 @@ class HomeViewModel : ViewModel() {
     }
 
 
-        override fun onCleared() {
-            super.onCleared()
-            threadRef.removeEventListener(childEventListener)
-        }
+    override fun onCleared() {
+        super.onCleared()
+        threadRef.removeEventListener(childEventListener)
     }
+}

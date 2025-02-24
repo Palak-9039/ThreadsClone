@@ -3,14 +3,12 @@ package com.example.finalproject.ViewModel
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import androidx.compose.ui.input.key.key
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.Model.ThreadData
-import com.example.finalproject.NotificationManager
 import com.example.finalproject.Util.NotificationHelper
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
@@ -21,15 +19,9 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.firestore
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.DataOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -51,7 +43,7 @@ class ThreadViewModel : ViewModel() {
     var isLoading: LiveData<Boolean> = _isLoading
 
     private var _threadData = MutableLiveData<List<ThreadData>>()
-    var threadData : LiveData<List<ThreadData>> = _threadData
+    var threadData: LiveData<List<ThreadData>> = _threadData
 
     private var threadListener: ChildEventListener? = null
     private var isListening = false
@@ -59,21 +51,32 @@ class ThreadViewModel : ViewModel() {
     private var initialThreadsLoaded = false // Add this flag
     private var lastProcessedTimestamp: String? = null // Add this variable
 
-    fun toggleLike(threadId: String, userId: String) {
+    fun toggleLike(threadId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val threadRef = threadRef.child(threadId)
                 val threadSnapshot = threadRef.get().await()
-                val threadData = threadSnapshot.getValue(ThreadData::class.java)
+                if (!threadSnapshot.exists()) {
+                    Log.e("toggleLike", "Thread does not exist in Firebase: $threadId")
+                    return@launch
+                }
 
+                val threadData = threadSnapshot.getValue(ThreadData::class.java)
+                println("threadData is : ${threadData}")
                 threadData?.let {
                     val currentLikes = it.likes.toMutableMap()
-                    if (currentLikes.containsKey(userId)) {
-                        currentLikes.remove(userId)
-                    } else {
-                        currentLikes[userId] = true
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    println("userid is : $userId")
+
+                    if (userId != null) {
+                        if (currentLikes.containsKey(userId)) {
+                            currentLikes.remove(userId)
+                        } else {
+                            currentLikes[userId] = true
+                        }
+                        threadRef.child("likes").setValue(currentLikes)
                     }
-                    threadRef.child("likes").setValue(currentLikes)
+
                 }
             } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error toggling like: ${e.message}")
@@ -89,7 +92,7 @@ class ThreadViewModel : ViewModel() {
         thread: String,
         onSuccess: (Boolean) -> Unit
     ) {
-        Log.e("threadviewmodel","save thread mein aaya")
+        Log.e("threadviewmodel", "save thread mein aaya")
         _isLoading.value = true
         viewModelScope.launch {
             val currentDateTime = LocalDateTime.now(ZoneOffset.UTC)
@@ -101,9 +104,11 @@ class ThreadViewModel : ViewModel() {
             val threadId = threadRef.push().key!!
 
             val threadObject =
-                ThreadData(uid, imageUrl, thread, threadTimestamp,
+                ThreadData(
+                    uid, imageUrl, thread, threadTimestamp,
                     likes = emptyMap(),
-                    threadId = threadId)
+                    threadId = threadId
+                )
 
             threadRef.child(threadId).setValue(threadObject)
                 .addOnSuccessListener {
@@ -111,14 +116,14 @@ class ThreadViewModel : ViewModel() {
                     onSuccess(true)
                     _isPosted.value = true
                     _isLoading.value = false
-                    Log.e("threadviewmodel","save ho gaya thread")
+                    Log.e("threadviewmodel", "save ho gaya thread")
 
                 }
                 .addOnFailureListener {
                     onSuccess(false)
                     _isPosted.value = false
                     _isLoading.value = false
-                    Log.e("threadviewmodel","save thread nhi ho paya")
+                    Log.e("threadviewmodel", "save thread nhi ho paya")
                 }
         }
     }
@@ -136,7 +141,7 @@ class ThreadViewModel : ViewModel() {
                             }
                             _threadData.postValue(resultList)
                             _isLoading.postValue(false)
-                            Log.e("threadviewmodel","threads fetch ho gyi")
+                            Log.e("threadviewmodel", "threads fetch ho gyi")
                         }
 
 
@@ -156,15 +161,15 @@ class ThreadViewModel : ViewModel() {
 
 
     @SuppressLint("NewApi")
-    fun listenForNewThreads(context : Context) {
+    fun listenForNewThreads(context: Context) {
 
         if (isListening) {
-            Log.e("threadviewmodel","listenForNewFollowers se wapas gaya")
+            Log.e("threadviewmodel", "listenForNewFollowers se wapas gaya")
 //            return
         }
 
 
-        Log.e("threadviewmodel","listenForNewthreads mein aaya")
+        Log.e("threadviewmodel", "listenForNewthreads mein aaya")
 
         threadListener?.let {
             threadRef.removeEventListener(it)
@@ -174,30 +179,34 @@ class ThreadViewModel : ViewModel() {
 
         var lastNotifiedTimestamp = SharedPref.getLastNotifiedTimestamp(context)
 
-        if(lastNotifiedTimestamp.isEmpty() || lastNotifiedTimestamp.equals("")){
-            Log.d("threadviewmodel","last timestamp : ${lastNotifiedTimestamp}")
+        if (lastNotifiedTimestamp.isEmpty() || lastNotifiedTimestamp.equals("")) {
+            Log.d("threadviewmodel", "last timestamp : ${lastNotifiedTimestamp}")
 
             val currentDateTime = LocalDateTime.now(ZoneOffset.UTC)
             val formatter = DateTimeFormatter.ISO_DATE_TIME
             lastNotifiedTimestamp = currentDateTime.format(formatter)
-            SharedPref.saveLastNotifiedTimestamp(context ,lastNotifiedTimestamp)
-            Log.d("threadviewmodel","save ke baad ${SharedPref.getLastNotifiedTimestamp(context)}")
+            SharedPref.saveLastNotifiedTimestamp(context, lastNotifiedTimestamp)
+            Log.d("threadviewmodel", "save ke baad ${SharedPref.getLastNotifiedTimestamp(context)}")
 
             Log.d("threadviewmodel", "First run detected. Setting initial timestamp.")
         }
 
         Log.d("threadviewmodel", "Started listening for new threads") // Debug log
 
-        threadRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("ThreadViewModel", "Initial threads loaded. Setting initialThreadsLoaded to true")
-                initialThreadsLoaded = true
-            }
+        threadRef.orderByChild("timestamp")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    Log.d(
+                        "ThreadViewModel",
+                        "Initial threads loaded. Setting initialThreadsLoaded to true"
+                    )
+                    initialThreadsLoaded = true
+                }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("ThreadViewModel", "Error loading initial threads: ${error.message}")
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ThreadViewModel", "Error loading initial threads: ${error.message}")
+                }
+            })
 
 
         threadListener = object : ChildEventListener {
@@ -214,7 +223,6 @@ class ThreadViewModel : ViewModel() {
 //                Log.d("threadviewmodel", " thread data : $threadTitle")  // Debug log
 
 
-
                 if (!initialThreadsLoaded) {
                     Log.d("ThreadViewModel", "Initial threads still loading. Ignoring thread.")
                     return
@@ -226,7 +234,10 @@ class ThreadViewModel : ViewModel() {
                 }
 
                 if (SharedPref.isNotificationAcknowledged(context, threadId)) {
-                    Log.d("ThreadViewModel", "Notification already acknowledged for thread: $threadId")
+                    Log.d(
+                        "ThreadViewModel",
+                        "Notification already acknowledged for thread: $threadId"
+                    )
                     return
                 }
 
@@ -256,11 +267,15 @@ class ThreadViewModel : ViewModel() {
 
 
                                     // Get OneSignal ID of the follower from Realtime Database
-                                    db.getReference ("users").child(followerId).child("oneSignalId").get()
+                                    db.getReference("users").child(followerId).child("oneSignalId")
+                                        .get()
                                         .addOnSuccessListener { oneSignalSnapshot ->
                                             val oneSignalId =
                                                 oneSignalSnapshot.getValue(String::class.java)
-                                            Log.e("threadviewmodel", "onesignal id : ${oneSignalId}")
+                                            Log.e(
+                                                "threadviewmodel",
+                                                "onesignal id : ${oneSignalId}"
+                                            )
                                             if (!oneSignalId.isNullOrEmpty()) {
                                                 Log.e(
                                                     "threadviewmodel",
@@ -275,11 +290,20 @@ class ThreadViewModel : ViewModel() {
                                                 // Update lastNotifiedTimestamp AFTER sending notifications
                                                 lastProcessedTimestamp?.let {
                                                     lastNotifiedTimestamp = it
-                                                    SharedPref.saveLastNotifiedTimestamp(context, lastNotifiedTimestamp)
-                                                    Log.d("ThreadViewModel", "lastNotifiedTimestamp updated to: $lastNotifiedTimestamp")
-                                            }
+                                                    SharedPref.saveLastNotifiedTimestamp(
+                                                        context,
+                                                        lastNotifiedTimestamp
+                                                    )
+                                                    Log.d(
+                                                        "ThreadViewModel",
+                                                        "lastNotifiedTimestamp updated to: $lastNotifiedTimestamp"
+                                                    )
+                                                }
 
-                                                SharedPref.markNotificationAcknowledged(context, threadId)
+                                                SharedPref.markNotificationAcknowledged(
+                                                    context,
+                                                    threadId
+                                                )
                                             }
                                         }
                                 }
@@ -288,7 +312,7 @@ class ThreadViewModel : ViewModel() {
 
                             }
 
-                    }catch (e:Exception){
+                    } catch (e: Exception) {
                         Log.d("ThreadViewModel", "error in fetchinf threads called ")
                     }
                 }
@@ -311,7 +335,7 @@ class ThreadViewModel : ViewModel() {
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ThreadViewModel", "data base errror : ${error.message}") // Debug log
                 isListening = false
-             }
+            }
         }
         threadRef.orderByChild("timestamp").addChildEventListener(threadListener!!)
         isListening = true
@@ -322,7 +346,7 @@ class ThreadViewModel : ViewModel() {
         // Remove the listener when the ViewModel is cleared
         if (threadListener != null) {
             threadListener?.let { threadRef.removeEventListener(it) }
-        isListening = false
+            isListening = false
         }
     }
 }
