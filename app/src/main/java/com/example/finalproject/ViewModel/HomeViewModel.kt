@@ -2,9 +2,11 @@ package com.example.finalproject.ViewModel
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.compose.ui.input.key.key
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.get
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.finalproject.Model.ThreadData
@@ -15,11 +17,15 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -42,8 +48,37 @@ class HomeViewModel : ViewModel() {
             viewModelScope.launch(Dispatchers.IO) {
                 try {
                     _isLoading.postValue(true)
+
+                    val threadId = snapshot.key
                     val threadData = snapshot.getValue(ThreadData::class.java)
                     threadData?.let {
+
+                        if (it.threadId == null) {
+                            // Get a reference to the specific thread in the database
+                            val threadRef = threadRef.child(threadId!!)
+
+                            // Update the threadId in the database
+                            threadRef.child("threadId").setValue(threadId).await()
+
+                            Log.d(
+                                "ThreadViewModel",
+                                "threadId was null for thread: $threadId, set to: $threadId"
+                            )
+                        }
+
+                        val likesSnapshot = snapshot.child("likes")
+                        if (!likesSnapshot.exists()) {
+                            // likes parameter is missing, add it as an empty map
+                            println("Updating thread: $threadId - Adding likes parameter")
+                            threadRef.child("likes").setValue(emptyMap<String, Boolean>()).await()
+                        } else if (likesSnapshot.value is Boolean) {
+                            // likes parameter is a boolean, delete it and add an empty map
+                            println("Updating thread: $threadId - likes parameter is a boolean, deleting and adding an empty map")
+                            threadRef.child("likes").removeValue().await()
+                            threadRef.child("likes").setValue(emptyMap<String, Boolean>()).await()
+                        }
+
+
                         val user = fetchUser(it.uid!!)
                         withContext(Dispatchers.Main) {
                             val currentList = _threadAndUser.value.orEmpty().toMutableList()
@@ -60,7 +95,7 @@ class HomeViewModel : ViewModel() {
         }
 
         override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-            // Handle changes to existing threads (if needed)
+            Log.d("firebase","onChildChanged called")
         }
 
         override fun onChildRemoved(snapshot: DataSnapshot) {
@@ -78,8 +113,8 @@ class HomeViewModel : ViewModel() {
     }
 
     init {
-        fetchInitialThreads()
         threadRef.addChildEventListener(childEventListener)
+        fetchInitialThreads()
     }
 
     private fun fetchInitialThreads() {
@@ -89,10 +124,15 @@ class HomeViewModel : ViewModel() {
                 val snapshot = threadRef.orderByChild("timestamp").get().await()
                 val threadUserList = mutableListOf<Pair<ThreadData, User>>()
                 for (threadSnapshot in snapshot.children.reversed()) {
+                    val threadId = threadSnapshot.key
                     val threadData = threadSnapshot.getValue(ThreadData::class.java)
+
                     threadData?.let {
-                        val user = fetchUser(it.uid!!)
-                        threadUserList.add(it to user)
+
+                        val user = it.uid?.let { uid -> fetchUser(uid) }
+                        if (user != null) {
+                            threadUserList.add(it to user)
+                        }
                     }
                 }
 
@@ -107,29 +147,6 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-
-//    suspend fun fetchThreadAndUser() = withContext(Dispatchers.IO) {
-//        try {
-//            val snapshot = threadRef.get().await() // Fetch threads asynchronously
-//            val resultList = mutableListOf<Deferred<Pair<ThreadData, User>>>()
-//
-//            for (threadSnapshot in snapshot.children) {
-//                val thread = threadSnapshot.getValue(ThreadData::class.java)
-//                thread?.let { threadData ->
-//                    val deferredPair = async {
-//                        val user = fetchUser(threadData.uid!!) // Fetch user concurrently
-//                        threadData to user
-//                    }
-//                    resultList.add(deferredPair)
-//                }
-//            }
-//
-//            val threadUserList = resultList.awaitAll() // Wait for all user fetches to complete
-//            _threadAndUser.postValue(threadUserList) // Update LiveData on UI thread
-//        } catch (e: Exception) {
-//            Log.e("Firebase", "Error fetching threads: ${e.message}")
-//        }
-//    }
 
 
     fun refreshData(){

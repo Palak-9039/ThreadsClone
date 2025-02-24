@@ -35,12 +35,15 @@ import com.example.finalproject.ViewModel.HomeViewModel
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import com.example.finalproject.ViewModel.ThreadViewModel
 import kotlinx.coroutines.launch
+import kotlin.concurrent.thread
 
 
 @Composable
 fun MainScreen(navController: NavController,
-               homeViewModel: HomeViewModel
+               homeViewModel: HomeViewModel,
+               threadViewModel: ThreadViewModel
 ){
     val pagerState : PagerState = rememberPagerState(initialPage = 0,pageCount = {2})
     val coroutineScope = rememberCoroutineScope()
@@ -105,8 +108,8 @@ fun MainScreen(navController: NavController,
 
             HorizontalPager(state = pagerState) { page ->
                 when (page) {
-                    0 -> Home(navController, homeViewModel)
-                    1 -> followingThreadsScreen(navController, homeViewModel)
+                    0 -> Home(navController, homeViewModel,threadViewModel)
+                    1 -> followingThreadsScreen(navController, homeViewModel,threadViewModel)
                 }
             }
         }

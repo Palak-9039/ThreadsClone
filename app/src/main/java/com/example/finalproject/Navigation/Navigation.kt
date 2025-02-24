@@ -42,7 +42,7 @@ fun navigation (){
             bottomNavigation(navController)
         }
         composable(Screens.Home.route){
-            MainScreen(navController,homeViewModel)
+            MainScreen(navController,homeViewModel,threadViewModel)
         }
         composable(Screens.Search.route){
             search(navController,searchViewModel)

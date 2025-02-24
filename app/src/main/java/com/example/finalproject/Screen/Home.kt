@@ -53,8 +53,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
+//import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -67,23 +69,48 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import com.example.finalproject.R
+import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+//import kotlin.time.Duration
+
+//import java.time.ZoneOffset
+//import java.time.format.DateTimeFormatter
+import java.time.Duration
+import java.util.Locale
 
 
-@RequiresApi(Build.VERSION_CODES.O)
+//@RequiresApi(Build.VERSION_CODES.O)
 
-fun timestampToReadableTime(timestamp: String):String{
-    val instant = Instant.ofEpochMilli(timestamp.toLong())
-    var formatter = DateTimeFormatter.ofPattern("hh:mm a, dd-MMM-y")
-        .withZone(ZoneId.systemDefault())
-    return formatter.format(instant)
+@SuppressLint("NewApi")
+fun timestampToReadableTime(timestamp: String): String {
+    return try {
+        val formatter = DateTimeFormatter.ISO_DATE_TIME
+        val dateTime = LocalDateTime.parse(timestamp, formatter)
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val duration = Duration.between(dateTime, now)
 
+        when {
+            duration.toMinutes() < 1 -> "Just now"
+            duration.toMinutes() < 60 -> "${duration.toMinutes()} minutes ago"
+            duration.toHours() < 24 -> "${duration.toHours()} hours ago"
+            duration.toDays() < 7 -> "${duration.toDays()} days ago"
+            else -> dateTime.format(DateTimeFormatter.ofPattern("MMM dd",
+                Locale.getDefault()))
+        }
+    } catch (e: Exception) {
+        // Handle parsing errors gracefully
+        e.printStackTrace()
+        "Invalid Date"
+    }
 }
 
 @Composable
 fun Home(navController: NavController,
-         homeViewModel: HomeViewModel){
+         homeViewModel: HomeViewModel,
+         threadViewModel: ThreadViewModel){
 
 
     val isLoading by homeViewModel.isLoading.observeAsState()
@@ -155,7 +182,7 @@ fun Home(navController: NavController,
                     ) {
                         items(threadAndUser) { pair ->
                             HorizontalDivider()
-                            threadItem(pair.first, pair.second, navController)
+                            threadItem(pair.first, pair.second, navController,threadViewModel)
                         }
                     }
                 }
@@ -167,7 +194,19 @@ fun Home(navController: NavController,
 
 @SuppressLint("NewApi")
 @Composable
-fun threadItem(threadData : ThreadData,user: User,navController: NavController){
+fun threadItem(threadData : ThreadData
+               ,user: User,
+               navController: NavController,
+               threadViewModel: ThreadViewModel){
+
+    var isLiked by remember { mutableStateOf(false) }
+    var likeCount by remember { mutableStateOf(0) }
+
+
+    LaunchedEffect(threadData) {
+        isLiked = threadData.likes[threadViewModel.firebaseUser.value?.uid] == true
+        likeCount = threadData.likes.count { it.value }
+    }
 
         Column (
             modifier = Modifier
@@ -193,7 +232,7 @@ fun threadItem(threadData : ThreadData,user: User,navController: NavController){
                             .size(40.dp)
                             .clip(CircleShape)
                             .clickable {
-                                navController.navigate(Screens.OtherProfile.route+"/${user.uid}")
+                                navController.navigate(Screens.OtherProfile.route + "/${user.uid}")
 
                             },
                         contentScale = ContentScale.FillBounds
@@ -206,7 +245,7 @@ fun threadItem(threadData : ThreadData,user: User,navController: NavController){
                         fontSize = 16.sp
                     )
                 }
-                Text(text = threadData.timestamp,
+                Text(text = timestampToReadableTime(threadData.timestamp),
                     fontSize = 12.sp,
                     color = Color.Gray,
                     modifier = Modifier
@@ -244,15 +283,14 @@ fun threadItem(threadData : ThreadData,user: User,navController: NavController){
             Row(modifier = Modifier.padding(top = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start){
-                IconButton(onClick = {}) {
-                    Icon(imageVector = if(1 == 1) Icons.Filled.Favorite
-                        else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if(1!=1)Color.Red else Color.Gray
-                    )
-                }
+               LikeButton(isLiked = isLiked,
+                   likeCount = likeCount,
+                   onLikeClicked = {
+                       println("udi is ${threadData.threadId}")
+                       threadViewModel.toggleLike(threadData.threadId!!,threadData.uid!!)
+                   })
 //                Spacer(Modifier.width(4.dp))
-                Text(text = "100", style = MaterialTheme.typography.bodySmall)
+//                Text(text = "100", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.width(4.dp))
 
                 IconButton(onClick = {}) {
@@ -263,4 +301,25 @@ fun threadItem(threadData : ThreadData,user: User,navController: NavController){
             }
         }
 
+}
+
+@Composable
+fun LikeButton(
+    isLiked: Boolean,
+    likeCount: Int,
+    onLikeClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.clickable { onLikeClicked() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+            contentDescription = "Like",
+            tint = if (isLiked) Color.Red else Color.Gray,
+            modifier = Modifier.padding(end = 4.dp)
+        )
+        Text(text = likeCount.toString())
+    }
 }

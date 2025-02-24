@@ -5,5 +5,6 @@ data class ThreadData(
     val imgUrl:String? = "",
     val thread:String = "",
     val timestamp:String= "",
-    var likes : MutableMap<String, Boolean> = mutableMapOf()
+    var threadId : String? = null,
+    var likes : Map<String, Boolean> = emptyMap()
 )

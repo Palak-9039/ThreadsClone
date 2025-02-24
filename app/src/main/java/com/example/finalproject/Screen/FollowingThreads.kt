@@ -60,6 +60,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import com.example.finalproject.R
+import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
@@ -75,8 +76,10 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 }
 
 @Composable
-fun followingThreadsScreen(navController: NavController,
-         homeViewModel: HomeViewModel){
+fun followingThreadsScreen(
+    navController: NavController,
+    homeViewModel: HomeViewModel,
+    threadViewModel : ThreadViewModel){
 
 
     val isLoading by homeViewModel.isLoading.observeAsState()
@@ -148,7 +151,7 @@ fun followingThreadsScreen(navController: NavController,
                     ) {
                         items(threadAndUser) { pair ->
                             HorizontalDivider()
-                            threadItem(pair.first, pair.second, navController)
+                            threadItem(pair.first, pair.second, navController,threadViewModel)
                         }
                     }
                 }
@@ -199,7 +202,7 @@ fun threadItemFollowingThreads(threadData : ThreadData,user: User,navController:
                         fontSize = 16.sp
                     )
                 }
-                Text(text = timestampToReadableTime(threadData.timestamp),
+                Text(text = threadData.timestamp,
                     fontSize = 12.sp,
                     color = Color.Gray,
                     modifier = Modifier
