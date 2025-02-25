@@ -6,9 +6,11 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.get
 import androidx.lifecycle.viewModelScope
 import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.Model.ThreadData
+import com.example.finalproject.Model.User
 import com.example.finalproject.Util.NotificationHelper
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
@@ -25,6 +27,7 @@ import kotlinx.coroutines.tasks.await
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import kotlin.collections.getValue
 
 class ThreadViewModel : ViewModel() {
     var db = FirebaseDatabase.getInstance()
@@ -44,6 +47,7 @@ class ThreadViewModel : ViewModel() {
 
     private var _threadData = MutableLiveData<List<ThreadData>>()
     var threadData: LiveData<List<ThreadData>> = _threadData
+
 
     private var threadListener: ChildEventListener? = null
     private var isListening = false
@@ -65,16 +69,18 @@ class ThreadViewModel : ViewModel() {
                 println("threadData is : ${threadData}")
                 threadData?.let {
                     val currentLikes = it.likes.toMutableMap()
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
-                    println("userid is : $userId")
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                    println("userid is : $currentUserId")
 
-                    if (userId != null) {
-                        if (currentLikes.containsKey(userId)) {
-                            currentLikes.remove(userId)
+                    if (currentUserId != null) {
+                        if (currentLikes.containsKey(currentUserId)) {
+                            currentLikes.remove(currentUserId)
                         } else {
-                            currentLikes[userId] = true
+                            currentLikes[currentUserId] = true
                         }
-                        threadRef.child("likes").setValue(currentLikes)
+                        threadRef.child("likes").setValue(currentLikes).await()
+
+                        sendLikeNotification(threadData,currentUserId)
                     }
 
                 }
@@ -84,6 +90,41 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
+
+    private fun sendLikeNotification(threadData: ThreadData, likerUserId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val threadOwnerId = threadData.uid
+
+                // Don't send a notification if the user likes their own thread
+                if (likerUserId == threadOwnerId) {
+                    Log.d("Notification", "User liked their own thread, no notification sent.")
+                    return@launch
+                }
+
+                // Get the liker's username
+                val likerUserSnapshot = users.child(likerUserId).get().await()
+                val likerUsername = likerUserSnapshot.getValue(User::class.java)?.userName ?: "Someone"
+
+                // Get the thread owner's OneSignal Player ID
+                val threadOwnerUserSnapshot = users.child(threadOwnerId!!).get().await()
+                val threadOwnerPlayerId = threadOwnerUserSnapshot.getValue(User::class.java)?.oneSignalId
+
+                if (threadOwnerPlayerId != null) {
+                    // Send the notification
+                    notificationHelper.sendNotification(
+                        title = "Liked thread",
+                        message = "$likerUsername liked your thread",
+                        threadOwnerPlayerId
+                    )
+                } else {
+                    Log.e("Notification", "Thread owner's OneSignal ID not found.")
+                }
+            } catch (e: Exception) {
+                Log.e("Notification", "Error sending notification: ${e.message}")
+            }
+        }
+    }
 
     @SuppressLint("NewApi")
     fun saveThread(
