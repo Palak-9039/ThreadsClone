@@ -14,6 +14,7 @@ import com.example.finalproject.Screen.Profile
 import com.example.finalproject.Screen.Screens
 import com.example.finalproject.Screen.addThread
 import com.example.finalproject.Screen.bottomNavigation
+import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.Screen.login
 import com.example.finalproject.Screen.otherprofile
 import com.example.finalproject.Screen.register
@@ -69,6 +70,10 @@ fun navigation (){
             id?.let {
                 otherprofile(navController,userViewModel,authViewModel,threadViewModel,id)
             }
+        }
+        composable(Screens.CommentsScreen.route+ "/{threadId}"){
+            var threadId = it.arguments!!.get("threadId").toString()
+            commentScreen(threadId,navController,threadViewModel)
         }
     }
 }

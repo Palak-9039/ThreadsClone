@@ -6,8 +6,9 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.get
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.finalproject.Model.CommentData
 import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.Model.ThreadData
 import com.example.finalproject.Model.User
@@ -20,23 +21,25 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.getValue
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import org.w3c.dom.Comment
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import kotlin.collections.getValue
+import kotlin.concurrent.thread
 
 class ThreadViewModel : ViewModel() {
     var db = FirebaseDatabase.getInstance()
     var threadRef = db.getReference("threads")
-    var users = db.getReference("users")
+    var userRef = db.getReference("users")
     var firestore = Firebase.firestore
     private val notificationHelper = NotificationHelper()
 
-    private var _firebaseUser = MutableLiveData<FirebaseUser?>()
+    private var _firebaseUser = MutableLiveData<FirebaseUser?>(FirebaseAuth.getInstance().currentUser)
     var firebaseUser: LiveData<FirebaseUser?> = _firebaseUser
 
     private var _isPosted = MutableLiveData<Boolean>()
@@ -55,6 +58,136 @@ class ThreadViewModel : ViewModel() {
     private var initialThreadsLoaded = false // Add this flag
     private var lastProcessedTimestamp: String? = null // Add this variable
 
+
+
+    fun getThreadData(threadId : String,onResult: (ThreadData?) -> Unit){
+        viewModelScope.launch(Dispatchers.IO){
+            try {
+                   val snapshot =  threadRef.child(threadId).get().await()
+                    val threadData = snapshot.getValue(ThreadData::class.java)
+
+                    onResult(threadData)
+            }catch (e : Exception){
+                Log.e("ThreadViewModel", "Error getting thread data: ${e.message}")
+                onResult(null)
+            }
+        }
+    }
+
+    fun getUser(userId : String,onResult: (User?) -> Unit){
+        viewModelScope.launch (Dispatchers.IO){
+            try {
+                val snapshot = userRef.child(userId).get().await()
+                val user = snapshot.getValue(User::class.java)
+                onResult(user)
+            }catch (e : Exception){
+                Log.e("ThreadViewModel", "Error getting user data: ${e.message}")
+                onResult(null)
+            }
+        }
+    }
+
+    //Comment feature related functions
+
+    fun addComment(threadId: String, commentText : String){
+        viewModelScope.launch(Dispatchers.IO) {
+            try{
+                var currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                var currentUserSnapshot = userRef.child(currentUserId!!).get().await()
+
+                var currentUserName = currentUserSnapshot.getValue(User::class.java)?.userName ?: "Unknown"
+
+                val commentId = threadRef.child(threadId).child("comments")
+                    .push().key
+                val commentData = CommentData(
+                    commentId = commentId,
+                    userId =currentUserId,
+                    userName = currentUserName,
+                    comment = commentText,
+                    timestamp = System.currentTimeMillis()
+                )
+
+                threadRef.child(threadId).child("comments").child(commentId!!)
+                    .setValue(commentData).await()
+
+                sendCommentNotification(threadId,commentData)
+
+            }catch (e:Exception){
+                Log.e("Comments","Error in adding comment : ${e.message}")
+            }
+        }
+
+    }
+
+
+    fun fetchComments(threadId : String,callback : (List<CommentData>) -> Unit){
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val commentRef = threadRef.child(threadId).child("comments")
+
+                commentRef.addValueEventListener(object : ValueEventListener{
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val fetchedComments  = mutableListOf<CommentData>()
+                        for (commentSnapshot in snapshot.children){
+                            val comment = commentSnapshot.getValue(CommentData::class.java)
+                            comment?.let { fetchedComments.add(comment) }
+                        }
+                        callback(fetchedComments.sortedBy { it.timestamp })
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("ThreadViewModel", "Error fetching comments: ${error.message}")
+                        callback(emptyList())
+                    }
+
+                })
+            }catch (e : Exception){
+                Log.e("ThreadViewModel", "Error fetching comments: ${e.message}")
+                callback(emptyList())
+            }
+        }
+    }
+
+    fun sendCommentNotification(threadId: String,commentData: CommentData){
+        viewModelScope.launch (Dispatchers.IO){
+            try {
+                val threadSnapshot = threadRef.child(threadId).get().await()
+                val threadData = threadSnapshot.getValue(ThreadData::class.java)?:return@launch
+
+                val threadOwnerId = threadData.uid
+
+                if(commentData.userId == threadOwnerId){
+                    Log.d("Notification", "User commented on their own thread, no notification sent.")
+                    return@launch
+                }
+
+                val commenterUsername = commentData.userName ?: "Someone"
+
+                val threadOwnerUserSnapshot = userRef.child(threadOwnerId!!).get().await()
+                val threadOwnerOnesignalId = threadOwnerUserSnapshot.getValue(User::class.java)?.oneSignalId
+
+                if(threadOwnerOnesignalId != null){
+                    notificationHelper.sendNotification(
+                        title = "New Comment",
+                        message = "$commenterUsername commented on your thread!",
+                        playerId = threadOwnerOnesignalId
+                    )
+                }else{
+                    Log.e("Notification", "Thread owner's OneSignal ID not found.")
+                }
+
+
+            }catch (e : Exception){
+                Log.e("Comments", "Error sending notification: ${e.message}")
+            }
+        }
+    }
+
+
+
+
+
+    // Likes feature related functions
     fun toggleLike(threadId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -103,11 +236,11 @@ class ThreadViewModel : ViewModel() {
                 }
 
                 // Get the liker's username
-                val likerUserSnapshot = users.child(likerUserId).get().await()
+                val likerUserSnapshot = userRef.child(likerUserId).get().await()
                 val likerUsername = likerUserSnapshot.getValue(User::class.java)?.userName ?: "Someone"
 
                 // Get the thread owner's OneSignal Player ID
-                val threadOwnerUserSnapshot = users.child(threadOwnerId!!).get().await()
+                val threadOwnerUserSnapshot = userRef.child(threadOwnerId!!).get().await()
                 val threadOwnerPlayerId = threadOwnerUserSnapshot.getValue(User::class.java)?.oneSignalId
 
                 if (threadOwnerPlayerId != null) {
@@ -126,6 +259,9 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
+
+
+    // Adding a new thread
     @SuppressLint("NewApi")
     fun saveThread(
         uid: String?,
@@ -148,7 +284,8 @@ class ThreadViewModel : ViewModel() {
                 ThreadData(
                     uid, imageUrl, thread, threadTimestamp,
                     likes = emptyMap(),
-                    threadId = threadId
+                    threadId = threadId,
+                    comments = emptyMap()
                 )
 
             threadRef.child(threadId).setValue(threadObject)
@@ -169,7 +306,7 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-
+ // Fetching threads
     fun fetchThreads(uid: String) {
         _isLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
@@ -200,7 +337,7 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-
+// Listening for new threads for notifications
     @SuppressLint("NewApi")
     fun listenForNewThreads(context: Context) {
 

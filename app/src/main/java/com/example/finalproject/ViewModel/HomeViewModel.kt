@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.finalproject.Model.CommentData
 import com.example.finalproject.Model.ThreadData
 import com.example.finalproject.Model.User
 import com.google.firebase.database.ChildEventListener
@@ -144,6 +145,7 @@ class HomeViewModel : ViewModel() {
                     val threadId = threadSnapshot.key
                     val threadData = threadSnapshot.getValue(ThreadData::class.java)
 
+                    val threadRefToUpdate = threadRef.child(threadId!!)
                     threadData?.let {
 
                         val user = it.uid?.let { uid -> fetchUser(uid) }

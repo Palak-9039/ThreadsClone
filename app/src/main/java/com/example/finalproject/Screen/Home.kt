@@ -294,7 +294,9 @@ fun threadItem(
 //                Text(text = "100", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.width(4.dp))
 
-            IconButton(onClick = {}) {
+            IconButton(onClick = {
+                navController.navigate(Screens.CommentsScreen.route + "/${threadData.threadId}")
+            }) {
                 Icon(
                     imageVector = Icons.Outlined.ModeComment,
                     contentDescription = "comment"

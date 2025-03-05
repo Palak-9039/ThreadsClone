@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.finalproject.Model.SharedPref
+import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.ViewModel.ThreadViewModel
 import com.onesignal.OneSignal
 
