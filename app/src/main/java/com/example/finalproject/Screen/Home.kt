@@ -63,6 +63,7 @@ import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.FirebaseAuth
+import org.w3c.dom.Comment
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -197,12 +198,15 @@ fun threadItem(
 
     var isLiked by remember { mutableStateOf(false) }
     var likeCount by remember { mutableStateOf(0) }
+//    var commentCount by remember { mutableStateOf(0) }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
 
     LaunchedEffect(threadData) {
         isLiked = currentUserId?.let { threadData.likes[it] == true } ?: false
         likeCount = threadData.likes.count { it.value }
+//        commentCount = threadViewModel.comments.value?.size?:0
+
     }
 
     Column(
@@ -294,14 +298,20 @@ fun threadItem(
 //                Text(text = "100", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.width(4.dp))
 
+
             IconButton(onClick = {
                 navController.navigate(Screens.CommentsScreen.route + "/${threadData.threadId}")
             }) {
                 Icon(
                     imageVector = Icons.Outlined.ModeComment,
-                    contentDescription = "comment"
+                    contentDescription = "comment",
+                    tint = MaterialTheme.colorScheme.onSecondary ,
+                    modifier = Modifier.padding(end = 4.dp)
                 )
             }
+//            Text(text = commentCount.toString(),
+////                color = MaterialTheme.colorScheme.onSecondary
+//            )
 
         }
     }
@@ -322,7 +332,7 @@ fun LikeButton(
         Icon(
             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
             contentDescription = "Like",
-            tint = if (isLiked) Color.Red else Color.Gray,
+            tint = if (isLiked) Color.Red else MaterialTheme.colorScheme.onSecondary,
             modifier = Modifier.padding(end = 4.dp)
         )
         Text(text = likeCount.toString())

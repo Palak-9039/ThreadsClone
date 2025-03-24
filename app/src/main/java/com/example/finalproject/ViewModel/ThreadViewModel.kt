@@ -3,6 +3,7 @@ package com.example.finalproject.ViewModel
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -58,6 +59,14 @@ class ThreadViewModel : ViewModel() {
     private var initialThreadsLoaded = false // Add this flag
     private var lastProcessedTimestamp: String? = null // Add this variable
 
+//    private val _comments = MutableLiveData<List<CommentData>>()
+//    var comments : LiveData<List<CommentData>> = _comments
+
+    private val _comments = mutableStateMapOf<String, List<CommentData>>()
+    val comments: Map<String, List<CommentData>> = _comments
+
+    private var currentThreadId: String? = null
+
 
 
     fun getThreadData(threadId : String,onResult: (ThreadData?) -> Unit){
@@ -74,13 +83,18 @@ class ThreadViewModel : ViewModel() {
         }
     }
 
-    fun getUser(userId : String,onResult: (User?) -> Unit){
+    fun getUser(userId : String?,onResult: (User?) -> Unit){
         viewModelScope.launch (Dispatchers.IO){
+            if (userId == null) {
+                Log.e("ThreadViewModel", "getUser called with null userId")
+                onResult(null)
+                return@launch // Exit the coroutine early
+            }
             try {
                 val snapshot = userRef.child(userId).get().await()
                 val user = snapshot.getValue(User::class.java)
                 onResult(user)
-            }catch (e : Exception){
+            } catch (e: Exception) {
                 Log.e("ThreadViewModel", "Error getting user data: ${e.message}")
                 onResult(null)
             }
@@ -119,31 +133,40 @@ class ThreadViewModel : ViewModel() {
 
     }
 
+    private var commentListener: ValueEventListener? = null
 
-    fun fetchComments(threadId : String,callback : (List<CommentData>) -> Unit){
+
+    fun fetchComments(threadId : String){
+        commentListener?.let {
+            threadRef.child(threadId).child("comments").removeEventListener(it)
+        }
+
+//        _comments.value = emptyList()
+        currentThreadId = threadId
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val commentRef = threadRef.child(threadId).child("comments")
 
-                commentRef.addValueEventListener(object : ValueEventListener{
+                commentListener = commentRef.addValueEventListener(object : ValueEventListener{
                     override fun onDataChange(snapshot: DataSnapshot) {
                         val fetchedComments  = mutableListOf<CommentData>()
                         for (commentSnapshot in snapshot.children){
                             val comment = commentSnapshot.getValue(CommentData::class.java)
                             comment?.let { fetchedComments.add(comment) }
                         }
-                        callback(fetchedComments.sortedBy { it.timestamp })
+                        _comments[threadId] = fetchedComments.sortedBy { it.timestamp }
+                        Log.d("CommentsScreen","comments are : ${comments[threadId]}")
                     }
 
                     override fun onCancelled(error: DatabaseError) {
                         Log.e("ThreadViewModel", "Error fetching comments: ${error.message}")
-                        callback(emptyList())
+                        _comments[threadId] = emptyList()
                     }
 
                 })
             }catch (e : Exception){
                 Log.e("ThreadViewModel", "Error fetching comments: ${e.message}")
-                callback(emptyList())
+               _comments[threadId] = emptyList()
             }
         }
     }
@@ -525,6 +548,12 @@ class ThreadViewModel : ViewModel() {
         if (threadListener != null) {
             threadListener?.let { threadRef.removeEventListener(it) }
             isListening = false
+        }
+
+        commentListener?.let {
+            currentThreadId?.let { threadId ->
+                threadRef.child(threadId).child("comments").removeEventListener(it)
+            }
         }
     }
 }
