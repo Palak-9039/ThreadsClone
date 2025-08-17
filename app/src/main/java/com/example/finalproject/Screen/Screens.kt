@@ -14,4 +14,5 @@ sealed class Screens(
     object SignUp:Screens("sign-up")
     object OtherProfile:Screens("other-profile")
     object CommentsScreen:Screens("comments")
+    object ProfileSettingScreen: Screens("profile_settings")
 }

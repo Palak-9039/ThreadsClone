@@ -72,7 +72,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun commentScreen(threadId : String,navController: NavController,threadViewModel: ThreadViewModel){
 
-//    val comments by threadViewModel.comments.observeAsState(emptyList())
 
     val comments = threadViewModel.comments
     val threadDatas by threadViewModel.threadData.observeAsState()
@@ -124,7 +123,6 @@ fun commentScreen(threadId : String,navController: NavController,threadViewModel
                        }
                    }
                }else {
-                   // Show a loading indicator while threadData is being fetched
                    CircularProgressIndicator()
                    Text("Loading thread data...")
                }
@@ -246,12 +244,12 @@ fun ThreadsTextField(
                     }
                 }
             },
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = underlineColor,
-                unfocusedBorderColor = unfocusedUnderlineColor,
-                cursorColor = cursorColor,
-                containerColor = containerColor
-            )
+//            colors = TextFieldDefaults.OutlinedTextFieldColors(
+//                focusedBorderColor = underlineColor,
+//                unfocusedBorderColor = unfocusedUnderlineColor,
+//                cursorColor = cursorColor,
+//                containerColor = containerColor
+//            )
         )
     }
 }

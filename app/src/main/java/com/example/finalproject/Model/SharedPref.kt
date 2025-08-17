@@ -16,8 +16,8 @@ object SharedPref {
     }
 
     fun storeData(name : String,userName:String,email:String,uid : String,imageUrl : String?,context : Context){
-        var pref = context.getSharedPreferences("users",MODE_PRIVATE)
-        var editor = pref.edit()
+        val pref = context.getSharedPreferences("users",MODE_PRIVATE)
+        val editor = pref.edit()
 
         editor.putString("name",name)
         editor.putString("userName",userName)
@@ -26,6 +26,18 @@ object SharedPref {
         editor.putString("imageUrl",imageUrl)
         editor.apply()
     }
+
+    fun saveImage(context: Context, imageUrl: String){
+        val pref = context.getSharedPreferences("users",MODE_PRIVATE)
+        pref.edit().putString("imageUrl",imageUrl).apply()
+    }
+
+    fun saveUsername(context: Context, username: String){
+        val pref = context.getSharedPreferences("users",MODE_PRIVATE)
+        pref.edit().putString("userName",username).apply()
+    }
+
+
 
     fun markNotificationAcknowledged(context: Context, threadId: String) {
         val acknowledgedNotifications = getAcknowledgedNotifications(context).toMutableSet()

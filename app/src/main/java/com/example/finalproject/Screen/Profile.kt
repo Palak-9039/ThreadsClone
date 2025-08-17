@@ -1,8 +1,17 @@
 package com.example.finalproject.Screen
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,17 +28,33 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +65,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -54,6 +80,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.security.Permission
 
 @Composable
 fun Profile(
@@ -89,17 +117,43 @@ fun Profile(
         }
     }
 
+    //start here with the navigation drawer
 
-    Scaffold(
-        bottomBar = { myBottomBar(navController) }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            ProfileHeader(authViewModel,navController)
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        modifier = Modifier.width(250.dp),
+        drawerState = drawerState,
+        drawerContent = { DrawerContent(
+            onLogoutClick = {authViewModel.SignOut()
+            Log.d("logout","user logged out  $firebaseUser")},
+            onProfileSettingsClick = {
+                navController.navigate(Screens.ProfileSettingScreen.route)
+            }
+        )},
+        gesturesEnabled = true
+    ) {
+
+        Scaffold(
+            bottomBar = { myBottomBar(navController)},
+            topBar = {ProfileTopAppBar(
+                onOpenDrawer = {
+                    scope.launch {
+                        drawerState.apply {
+                            if(isClosed)open() else close()
+                        }
+                    }
+                }
+            )}
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                ProfileHeader(authViewModel,navController)
                 LazyColumn(
                     contentPadding = PaddingValues(8.dp)
                 ) {
@@ -111,6 +165,9 @@ fun Profile(
                 }
             }
         }
+    }
+
+
     }
 
 
@@ -128,6 +185,12 @@ fun ProfileHeader(authViewModel: AuthViewModel,
             .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally
     ){
+
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+
+        }
         AsyncImage(
             model = SharedPref.getImage(context),
             contentDescription = "profile image",
@@ -165,15 +228,6 @@ fun ProfileHeader(authViewModel: AuthViewModel,
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                authViewModel.SignOut()
-                println("firebase user after sign out + "+ firebaseUser)
-            }
-        ) {
-            Text(text = "Logout", color = Color.White, fontSize = 16.sp)
-        }
     }
 }
 
@@ -251,4 +305,86 @@ fun PostItem(threadData : ThreadData){
 
     }
 
+}
+
+
+
+@SuppressLint("InlinedApi")
+@Composable
+fun DrawerContent(modifier: Modifier = Modifier,
+                  onLogoutClick : ()-> Unit,
+                  onProfileSettingsClick: () -> Unit){
+
+    ModalDrawerSheet {
+        Text(
+            "Profile Settings",
+            modifier = Modifier.padding(16.dp)
+        )
+        HorizontalDivider()
+        NavigationDrawerItem(
+            label = {Text("Drawer Item 1")},
+            selected = false,
+            onClick = {}
+        )
+        NavigationDrawerItem(
+            label = {Text("Drawer Item 2")},
+            selected = false,
+            onClick = {}
+        )
+        NavigationDrawerItem(
+            label = {Text("change profile photo")},
+            selected = false,
+            onClick = {
+                onProfileSettingsClick()
+            }
+        )
+        NavigationDrawerItem(
+            label = {Text("Logout",
+                color = MaterialTheme.colorScheme.onError)},
+            selected = false,
+            onClick = {
+                onLogoutClick()
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileTopAppBar(onOpenDrawer : ()-> Unit){
+
+    TopAppBar(
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+       title =  {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Profile", modifier = Modifier.padding(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentDescription = "Menu",
+                    modifier = Modifier.clickable {
+                        onOpenDrawer()
+                    }
+                )
+            }
+        }
+//        title = { Text("Profile", modifier = Modifier.padding(8.dp))},
+//        navigationIcon = {
+//            Icon(
+//                imageVector = Icons.Default.Menu,
+//                contentDescription = "Menu",
+//                modifier = Modifier.clickable {
+//                    onOpenDrawer()
+//                }
+//            )
+//        }
+    )
 }

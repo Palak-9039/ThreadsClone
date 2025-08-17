@@ -25,9 +25,24 @@ import com.example.finalproject.ViewModel.UserViewModel
 import com.example.finalproject.ui.theme.FinalProjectTheme
 import com.google.firebase.auth.FirebaseAuth
 import android.Manifest
+import android.util.Log
+import androidx.compose.foundation.clickable
+import androidx.compose.material.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -35,6 +50,7 @@ import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.ViewModel.ThreadViewModel
 import com.onesignal.OneSignal
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val userViewModel: UserViewModel by viewModels()
@@ -80,7 +96,7 @@ class MainActivity : ComponentActivity() {
         if (currentUser != null) {
             // User is signed in, check for notification permission
             checkNotificationPermission()
-            if (!isListening){
+            if (!isListening) {
                 startListening()
                 isListening = true
             }
@@ -109,12 +125,97 @@ class MainActivity : ComponentActivity() {
         val currentUser = auth.currentUser
         if (currentUser != null) {
             threadsViewModel.listenForNewThreads(this)
-            userViewModel.listenForNewFollowers(currentUser.uid,this)
+            userViewModel.listenForNewFollowers(currentUser.uid, this)
         }
     }
+
     private fun stopListening() {
 
     }
 
+
+    @Composable
+    fun screen() {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+        val scope = rememberCoroutineScope()
+
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                drawerContent()
+            },
+            gesturesEnabled = true
+        ) {
+            Scaffold(topBar = {
+                topAppBar(
+                    openDrawer = {
+                        Log.d("DrawerDebug", "openDrawer lambda called in screen()")
+                        scope.launch {
+                            Log.d("DrawerDebug", "Launching coroutine to open drawer. Current state: ${drawerState.currentValue}")
+                            drawerState.open()
+                            Log.d("DrawerDebug", "Called drawerState.open(). New state: ${drawerState.currentValue}")
+                        }
+                    }
+                )
+            }) {
+                screenContent(modifier = Modifier.padding(it))
+            }
+        }
+    }
+
+
+        @Composable
+        fun drawerContent() {
+            ModalDrawerSheet { // Add this
+                Text(
+                    "Profile Settings",
+                    modifier = Modifier.padding(16.dp)
+                )
+                HorizontalDivider()
+                NavigationDrawerItem(
+                    label = { Text("Drawer Item 1") },
+                    selected = false,
+                    onClick = { /* TODO: Handle click */ }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Drawer Item 2") },
+                    selected = false,
+                    onClick = { /* TODO: Handle click */ }
+                )
+            }
+        }
+
+
+    @Composable
+    fun screenContent(modifier: Modifier) {
+
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun topAppBar(openDrawer: () -> Unit) {
+        TopAppBar(
+            title = {
+                Text(
+                    "Profile",
+                    modifier = Modifier.padding(16.dp)
+                )
+            },
+            navigationIcon = {
+                Icon(imageVector = Icons.Default.Menu,
+                    contentDescription = null,
+                    modifier = Modifier.clickable {
+                        openDrawer()
+                    })
+
+            }
+        )
+    }
+
+
+
+
 }
+
 

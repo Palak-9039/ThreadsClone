@@ -11,6 +11,7 @@ import com.example.finalproject.Screen.Home
 import com.example.finalproject.Screen.MainScreen
 import com.example.finalproject.Screen.Notification
 import com.example.finalproject.Screen.Profile
+import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.Screens
 import com.example.finalproject.Screen.addThread
 import com.example.finalproject.Screen.bottomNavigation
@@ -32,7 +33,7 @@ fun navigation (){
     val authViewModel : AuthViewModel = viewModel()
     val threadViewModel : ThreadViewModel = viewModel()
     val homeViewModel : HomeViewModel = viewModel()
-    val userViewModel : UserViewModel = viewModel()
+    val userViewModel : UserViewModel = viewModel() 
     val searchViewModel : SearchViewModel = viewModel()
 
     NavHost(navController = navController,startDestination = Screens.Splash.route){
@@ -63,6 +64,9 @@ fun navigation (){
         }
         composable(Screens.SignUp.route){
             register(navController,authViewModel)
+        }
+        composable(Screens.ProfileSettingScreen.route){
+            ProfileSettingScreen()
         }
         composable(Screens.OtherProfile.route + "/{id}"){
             var id = it.arguments!!.get("id").toString()
