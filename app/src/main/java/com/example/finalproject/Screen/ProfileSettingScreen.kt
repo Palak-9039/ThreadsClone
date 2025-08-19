@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +59,7 @@ fun ProfileSettingScreen(){
     var imageRef by remember{ mutableStateOf<Uri?>(null)}
     var photoUrl by remember { mutableStateOf<String?>(SharedPref.getImage(context)) }
     var userName by remember{ mutableStateOf<String?>(SharedPref.getName(context))}
+    var name by remember { mutableStateOf<String>(SharedPref.getName(context)) }
 
 
     var userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -70,6 +73,8 @@ fun ProfileSettingScreen(){
             override fun onDataChange(snapshot: DataSnapshot) {
                 val newUrl = snapshot.child("imageUrl").getValue(String::class.java)
                 val newUsername = snapshot.child("userName").getValue(String::class.java)
+                val newName = snapshot.child("name").getValue(String::class.java)
+
 
                 if(newUrl != null){
                     photoUrl = newUrl
@@ -78,6 +83,10 @@ fun ProfileSettingScreen(){
                 if(newUsername != null){
                     userName = newUsername
                     SharedPref.saveUsername(context,newUsername)
+                }
+                if(newName != null){
+                    name = newName
+                    SharedPref.saveName(context,newName)
                 }
             }
 
@@ -203,9 +212,13 @@ fun ProfileSettingScreen(){
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(10.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text
+            ),
+            colors = TextFieldDefaults.textFieldColors(
+                textColor = MaterialTheme.colorScheme.onBackground,
+                backgroundColor = MaterialTheme.colorScheme.background,
             )
         )
         Button(
@@ -226,11 +239,36 @@ fun ProfileSettingScreen(){
             )
         }
 
+        OutlinedTextField(
+            value = name ?:"",
+            onValueChange = {name = it},
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text
+            ),
+            colors = TextFieldDefaults.textFieldColors(
+                textColor = MaterialTheme.colorScheme.onBackground,
+                backgroundColor = MaterialTheme.colorScheme.background,
+            )
+        )
         Button(
-            onClick = {}
+            onClick = {
+                databaseRef.child("name").setValue(name)
+                    .addOnSuccessListener {
+                        SharedPref.saveName(context,name)
+                        Log.e("name update","name updated with ${name}")
+                    }
+                    .addOnFailureListener{
+                        Log.e("name update","error in name update : ${it.message}")
+
+                    }
+            }
         ) {
             Text(
-                text = "change password"
+                text = "change name"
             )
         }
     }

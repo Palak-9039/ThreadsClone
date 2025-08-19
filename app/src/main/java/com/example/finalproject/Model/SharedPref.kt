@@ -27,6 +27,11 @@ object SharedPref {
         editor.apply()
     }
 
+    fun saveName(context: Context,name : String){
+        val pref = context.getSharedPreferences("users", MODE_PRIVATE)
+        pref.edit().putString("name",name).apply()
+    }
+
     fun saveImage(context: Context, imageUrl: String){
         val pref = context.getSharedPreferences("users",MODE_PRIVATE)
         pref.edit().putString("imageUrl",imageUrl).apply()

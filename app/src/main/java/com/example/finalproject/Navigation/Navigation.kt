@@ -1,19 +1,16 @@
 package com.example.finalproject.Navigation
 
-import android.app.Activity
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.finalproject.Screen.Home
 import com.example.finalproject.Screen.MainScreen
 import com.example.finalproject.Screen.Notification
 import com.example.finalproject.Screen.Profile
 import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.Screens
-import com.example.finalproject.Screen.addThread
+import com.example.finalproject.Screen.AddThread
 import com.example.finalproject.Screen.bottomNavigation
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.Screen.login
@@ -53,7 +50,7 @@ fun navigation (){
             Notification(navController)
         }
         composable(Screens.AddThread.route){
-            addThread(navController,threadViewModel)
+            AddThread(navController,threadViewModel)
         }
         composable(Screens.Profile.route){
             Profile(navController,authViewModel,threadViewModel,userViewModel)

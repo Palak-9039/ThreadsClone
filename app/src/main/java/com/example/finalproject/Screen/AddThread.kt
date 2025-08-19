@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
@@ -33,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -52,19 +51,67 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import coil3.compose.rememberAsyncImagePainter
 import com.example.finalproject.ImageUploading.uploadImageToCloudinary
 import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.R
 import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.firebase.auth.FirebaseAuth
-import kotlin.contracts.contract
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 @Composable
-fun addThread(navController: NavController,
+fun AddThread(navController: NavController,
               threadViewModel: ThreadViewModel){
-    var context = LocalContext.current
-//    var profileImg by remember {mutableStateOf("")}
+
+
+
+
+
+    val context = LocalContext.current
+    var photoUrl by remember{ mutableStateOf(SharedPref.getImage(context))}
+    var name by remember { mutableStateOf(SharedPref.getName(context)) }
+
+
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?:return
+    val databaseRef = remember {
+        FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(userId)
+    }
+
+
+    DisposableEffect(userId) {
+        val listener = object : ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newPhotoUrl = snapshot.child("imageUrl").getValue(String::class.java)
+                val newName = snapshot.child("name").getValue(String::class.java)
+
+                if(newPhotoUrl != null){
+                    photoUrl = newPhotoUrl
+                    SharedPref.saveImage(context,newPhotoUrl)
+                }
+
+                if(newName!= null){
+                    name = newName
+                    SharedPref.saveName(context,newName)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Add Thread on cancelled","Failed to load image ",error.toException())
+            }
+        }
+
+        databaseRef.addValueEventListener(listener)
+
+        onDispose {
+            databaseRef.removeEventListener(listener)
+        }
+    }
+
+
 
 
     val isLoading by threadViewModel.isLoading.observeAsState(initial = false)
@@ -84,7 +131,7 @@ fun addThread(navController: NavController,
             imageRef = uri
         }
 
-    var permissionLauncher =
+    val permissionLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
             isGranted ->
             if(isGranted){
@@ -125,7 +172,7 @@ fun addThread(navController: NavController,
                 ) {
                     println("shared pref wali image : " + SharedPref.getImage(context))
                     AsyncImage(
-                        model = SharedPref.getImage(context),
+                        model = photoUrl,
                         contentDescription = null,
                         placeholder = painterResource(R.drawable.threads_log),
                         contentScale = ContentScale.Crop,
