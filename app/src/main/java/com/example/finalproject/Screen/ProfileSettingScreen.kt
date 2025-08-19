@@ -14,9 +14,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
@@ -51,7 +55,8 @@ fun ProfileSettingScreen(){
 
     val context = LocalContext.current
     var imageRef by remember{ mutableStateOf<Uri?>(null)}
-    var photoUrl by remember { mutableStateOf<String?>(null) }
+    var photoUrl by remember { mutableStateOf<String?>(SharedPref.getImage(context)) }
+    var userName by remember{ mutableStateOf<String?>(SharedPref.getName(context))}
 
 
     var userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -71,7 +76,8 @@ fun ProfileSettingScreen(){
                     SharedPref.saveImage(context,newUrl)
                 }
                 if(newUsername != null){
-                    TODO("Do the same for username")
+                    userName = newUsername
+                    SharedPref.saveUsername(context,newUsername)
                 }
             }
 
@@ -191,8 +197,29 @@ fun ProfileSettingScreen(){
             )
         }
 
+        OutlinedTextField(
+            value = userName ?:"",
+            onValueChange = {userName = it},
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text
+            )
+        )
         Button(
-            onClick = {}
+            onClick = {
+                databaseRef.child("userName").setValue(userName)
+                    .addOnSuccessListener {
+                        SharedPref.saveUsername(context,userName?:"Guest")
+                        Log.e("Username update","username updated with ${userName}")
+                    }
+                    .addOnFailureListener{
+                        Log.e("Username update","error in username update : ${it.message}")
+
+                    }
+            }
         ) {
             Text(
                 text = "change username"

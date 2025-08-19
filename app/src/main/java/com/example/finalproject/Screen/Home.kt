@@ -63,6 +63,10 @@ import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import org.w3c.dom.Comment
 import java.time.Duration
 import java.time.LocalDateTime
@@ -114,6 +118,51 @@ fun Home(
     var isRefreshing by remember { mutableStateOf(false) }
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing)
 
+    val context = LocalContext.current
+
+
+    var userName by remember { mutableStateOf(SharedPref.getUserName(context)) }
+    var imageRef by remember{ mutableStateOf(SharedPref.getImage(context))}
+
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+    LaunchedEffect(userId) {
+        if(userId != null){
+            val databaseRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(userId)
+
+            databaseRef.addValueEventListener(
+                object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val newUsername = snapshot.child("userName").getValue(String::class.java)
+                        val newImage = snapshot.child("imageUrl").getValue(String::class.java)
+
+
+                        if(newUsername != null){
+                            userName = newUsername
+                            SharedPref.saveUsername(context,newUsername)
+                        }
+                        if(newImage != null){
+                            imageRef = newImage
+                            SharedPref.saveImage(context,newImage)
+                        }
+
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("Profile Update", "Failed to fetch user data", error.toException())
+                    }
+
+                }
+            )
+
+
+        }
+
+
+    }
+
     LaunchedEffect(isRefreshing) {
         Log.d("SwipeRefresh", "isRefreshing: $isRefreshing")
         Log.d("SwipeRefresh", "swipeRefreshState.isRefreshing: ${swipeRefreshState.isRefreshing}")
@@ -150,7 +199,7 @@ fun Home(
                                 .padding(8.dp)
                         ) {
                             AsyncImage(
-                                model = SharedPref.getImage(LocalContext.current),
+                                model = imageRef,
                                 contentDescription = "Profile image",
                                 placeholder = painterResource(R.drawable.profile_image),
                                 modifier = Modifier
@@ -161,7 +210,7 @@ fun Home(
                             Spacer(Modifier.width(4.dp))
                             Column {
                                 Text(
-                                    text = SharedPref.getName(LocalContext.current),
+                                    text = userName?:"Guest",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
