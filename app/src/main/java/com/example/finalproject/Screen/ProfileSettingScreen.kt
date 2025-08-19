@@ -44,6 +44,7 @@ import coil3.compose.rememberAsyncImagePainter
 import com.example.finalproject.ImageUploading.uploadImageToCloudinary
 import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.R
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -60,6 +61,9 @@ fun ProfileSettingScreen(){
     var photoUrl by remember { mutableStateOf<String?>(SharedPref.getImage(context)) }
     var userName by remember{ mutableStateOf<String?>(SharedPref.getName(context))}
     var name by remember { mutableStateOf<String>(SharedPref.getName(context)) }
+
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
 
 
     var userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -146,6 +150,8 @@ fun ProfileSettingScreen(){
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
 
+
+        //change profile photo
         AsyncImage(
             model = photoUrl?: R.drawable.profile_image,
             contentDescription = "Profile image",
@@ -206,6 +212,8 @@ fun ProfileSettingScreen(){
             )
         }
 
+
+        //update username
         OutlinedTextField(
             value = userName ?:"",
             onValueChange = {userName = it},
@@ -239,6 +247,8 @@ fun ProfileSettingScreen(){
             )
         }
 
+
+        //Update name
         OutlinedTextField(
             value = name ?:"",
             onValueChange = {name = it},
@@ -269,6 +279,63 @@ fun ProfileSettingScreen(){
         ) {
             Text(
                 text = "change name"
+            )
+        }
+        //update password
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth()
+                .padding(10.dp),
+            value = currentPassword,
+            onValueChange = {currentPassword = it},
+            placeholder = {Text("Enter current password")},
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                textColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onBackground
+            )
+        )
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth()
+                .padding(10.dp),
+            value = newPassword,
+            onValueChange = {newPassword = it},
+            placeholder = {Text("Enter new password")},
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                textColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onBackground
+            )
+        )
+
+
+        val user = FirebaseAuth.getInstance().currentUser
+        val email = user?. email ?:return
+
+        Button(
+            onClick = {
+
+                val credential = EmailAuthProvider.getCredential(email,currentPassword)
+
+                user?.reauthenticate(credential)?.addOnCompleteListener{
+                    reauthTask ->
+                    if(reauthTask.isSuccessful){
+                        user.updatePassword(newPassword)
+                            .addOnCompleteListener{
+                                updateTask ->
+                                if(updateTask.isSuccessful){
+                                    Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
+                                }else{
+                                    Toast.makeText(context, "Failed to update password: ${updateTask.exception?.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                    }else{
+                        Toast.makeText(context, "Re-authentication failed: ${reauthTask.exception?.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+            }
+        ) {
+            Text(
+                text = "Change password",
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
     }
