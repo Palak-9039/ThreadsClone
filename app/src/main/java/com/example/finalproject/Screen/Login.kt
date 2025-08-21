@@ -143,6 +143,16 @@ fun login(navController: NavController,authViewModel: AuthViewModel){
                     }
 
                 })
+
+            Text(
+                text = "Forgot password?",
+                style = TextStyle(
+                    fontSize = 15.sp
+                ),
+                modifier = Modifier.clickable {
+                    authViewModel.resetPassword(email,context)
+                }
+            )
         }
     }
 }

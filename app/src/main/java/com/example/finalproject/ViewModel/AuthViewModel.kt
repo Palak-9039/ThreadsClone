@@ -2,6 +2,7 @@ package com.example.finalproject.ViewModel
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -210,6 +211,22 @@ class AuthViewModel : ViewModel() {
                 Log.e("OneSignal", "Failed to remove external user ID: ${error.message}")
             }
         })
+    }
+
+    fun resetPassword(email:String,context: Context){
+
+
+        FirebaseAuth.getInstance()
+            .sendPasswordResetEmail(email)
+            .addOnCompleteListener{
+                task ->
+                if(task.isSuccessful){
+                    Toast.makeText(context, "Password reset email sent", Toast.LENGTH_SHORT).show()
+                    Log.d("password update","email sent to ${email}")
+                }else{
+                    Toast.makeText(context, "Failed to send reset email: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                }
+            }
     }
 
 
