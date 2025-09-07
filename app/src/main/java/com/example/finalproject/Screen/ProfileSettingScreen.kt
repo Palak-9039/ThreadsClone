@@ -43,7 +43,7 @@ import com.example.finalproject.ImageUploading.uploadImageToCloudinary
 import com.example.finalproject.R
 import com.example.finalproject.ViewModel.ProfileSettingsViewModel
 import androidx.compose.material3.TextFieldDefaults
-
+import com.example.finalproject.Repository.UserRepository
 
 
 @SuppressLint("InlinedApi")
@@ -54,7 +54,8 @@ fun ProfileSettingScreen(){
     val viewModel : ProfileSettingsViewModel = viewModel(
         factory = object : ViewModelProvider.Factory{
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ProfileSettingsViewModel(context) as T
+                val repo = UserRepository(context.applicationContext)
+                return ProfileSettingsViewModel(repo) as T
             }
         }
     )

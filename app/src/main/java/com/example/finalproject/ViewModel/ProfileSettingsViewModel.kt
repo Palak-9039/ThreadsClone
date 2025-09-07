@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
 import com.example.finalproject.Model.ProfileUiState
 import com.example.finalproject.Model.SharedPref
+import com.example.finalproject.Repository.UserRepository
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -17,7 +18,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
 class ProfileSettingsViewModel(
-    private val context : Context
+    private val repo : UserRepository
 ) : ViewModel() {
 
     private val _uiState = mutableStateOf(ProfileUiState())
@@ -30,37 +31,35 @@ class ProfileSettingsViewModel(
         //handle this later if(userId == null)
 
         _uiState.value = ProfileUiState(
-            photoUrl = SharedPref.getImage(context),
-            userName = SharedPref.getUserName(context),
-            name = SharedPref.getName(context)
+            photoUrl = repo.getImage(),
+            userName = repo.getUserName(),
+            name = repo.getName()
         )
 
-        if (userId != null) {
-
-        databaseRef.child(userId).addValueEventListener(
-            object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val newUrl = snapshot.child("imageUrl").getValue(String::class.java)
-                    val newUserName = snapshot.child("userName").getValue(String::class.java)
-                    val newName = snapshot.child("name").getValue(String::class.java)
-
-                    _uiState.value = _uiState.value.copy(
-                        photoUrl = newUrl ?: uiState.value.photoUrl,
-                        userName = newUserName ?: uiState.value.userName,
-                        name = newName ?: uiState.value.name
-                    )
-
-                    newUrl?.let { SharedPref.saveImage(context, it) }
-                    newUserName?.let { SharedPref.saveUsername(context, it) }
-                    newName?.let { SharedPref.saveName(context, it) }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ProfileVM", "Failed to fetch user data", error.toException())
-                }
-            }
-        )
-    }
+//        if (userId != null) {
+//
+//        databaseRef.child(userId).addValueEventListener(
+//            object : ValueEventListener {
+//                override fun onDataChange(snapshot: DataSnapshot) {
+//                    val newUrl = snapshot.child("imageUrl").getValue(String::class.java)
+//                    val newUserName = snapshot.child("userName").getValue(String::class.java)
+//                    val newName = snapshot.child("name").getValue(String::class.java)
+//
+//                    _uiState.value = _uiState.value.copy(
+//                        photoUrl = newUrl ?: uiState.value.photoUrl,
+//                        userName = newUserName ?: uiState.value.userName,
+//                        name = newName ?: uiState.value.name
+//                    )
+//
+//
+//                }
+//
+//                override fun onCancelled(error: DatabaseError) {
+//                    Log.e("ProfileVM", "Failed to fetch user data", error.toException())
+//                }
+//            }
+//        )
+//    }
     }
 
 
@@ -82,52 +81,35 @@ class ProfileSettingsViewModel(
     // updating user profile details
 
     fun updatePhoto(newPhotoUrl : String){
-        userId?.let {
-            databaseRef.child(it)
-                .child("imageUrl")
-                .setValue(newPhotoUrl)
-                .addOnCompleteListener{task ->
-                    if(task.isSuccessful){
-                        Log.d("update photo","photo updated in database ${newPhotoUrl}")
-                        SharedPref.saveImage(context,newPhotoUrl)
-                        _uiState.value = _uiState.value.copy(photoUrl = newPhotoUrl)
-                    }else{
-                        Log.d("update photo","photo couldn't be updated in database")
-                    }
+        val userId = repo.getUserId() ?: return
 
-                }
+        if(!newPhotoUrl.isNullOrEmpty()){
+            repo.updatePhotoInDb(userId,newPhotoUrl){
+                _uiState.value = _uiState.value.copy(photoUrl = newPhotoUrl)
+            }
         }
     }
 
     fun updateUserName(newUserName : String){
-        userId?.let {
-            databaseRef.child(it)
-                .child("userName")
-                .setValue(newUserName)
-                .addOnSuccessListener {
-                    SharedPref.saveUsername(context,newUserName)
-                    _uiState.value = _uiState.value.copy(userName = newUserName)
-                }
-                .addOnFailureListener{
-                    Log.e("update username","error in updating username ${it.message}",it)
-                    Toast.makeText(context,"username ${it.message}",Toast.LENGTH_LONG).show()
-                }
+        val userId = repo.getUserId() ?: return
+        if(newUserName.isNotEmpty()){
+        repo.updateUserNameInDb(userId,newUserName){
+            _uiState.value = _uiState.value.copy(
+                userName = newUserName
+            )
+        }
         }
     }
 
     fun updateName(newName : String){
-        userId?.let {
-            databaseRef.child(it)
-                .child("name")
-                .setValue(newName)
-                .addOnSuccessListener {
-                    SharedPref.saveName(context,newName)
-                    _uiState.value = _uiState.value.copy(name = newName)
-                }
-                .addOnFailureListener{
-                    Log.e("update name","error in updating name ${it.message}",it)
-                    Toast.makeText(context,"name ${it.message}",Toast.LENGTH_LONG).show()
-                }
+       val userId = repo.getUserId() ?: return
+
+        if(newName.isNotEmpty()){
+            repo.updateNameInDb(userId,newName){
+               _uiState.value = _uiState.value.copy(
+                    name = newName
+                )
+            }
         }
     }
 
@@ -150,13 +132,13 @@ class ProfileSettingsViewModel(
                         .addOnCompleteListener{
                             updateTask ->
                             if(updateTask.isSuccessful){
-                                Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
+                                Log.d("password update","successful")
                             }else{
-                                Toast.makeText(context, "Failed to update password: ${updateTask.exception?.message}", Toast.LENGTH_LONG).show()
+                                Log.d("password update","failed")
                             }
                         }
                 }else{
-                    Toast.makeText(context, "Re-authentication failed: ${reauthTask.exception?.message}", Toast.LENGTH_LONG).show()
+                    Log.d("password update","reauth failed")
                 }
             }
         }

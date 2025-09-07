@@ -100,10 +100,13 @@ fun Profile(
     val allThreads by threadViewModel.threadData.observeAsState(emptyList())
     val context = LocalContext.current
 
+
+    val user by userViewModel.userData.observeAsState()
+
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-    var userName by remember { mutableStateOf<String>(SharedPref.getUserName(context)) }
-    var name by remember { mutableStateOf<String>(SharedPref.getName(context)) }
-    var imageUrl by remember { mutableStateOf<String>(SharedPref.getImage(context)) }
+//    var userName by remember { mutableStateOf<String>(SharedPref.getUserName(context)) }
+//    var name by remember { mutableStateOf<String>(SharedPref.getName(context)) }
+//    var imageUrl by remember { mutableStateOf<String>(SharedPref.getImage(context)) }
 
 
     //Redirecting if not logged in
@@ -121,46 +124,18 @@ fun Profile(
     LaunchedEffect(userId) {
         Log.d("ProfileScreen", "LaunchedEffect is running")
         threadViewModel.fetchThreads(userId)
+        userViewModel.listenToUser(userId,context)
     }
 
-    val databaseRef = FirebaseDatabase.getInstance()
-        .getReference("users")
-        .child(userId)
-
-    //Listening for real time profile updates
-    DisposableEffect(userId) {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val newUserName = snapshot.child("userName").getValue(String::class.java)
-                val newName = snapshot.child("name").getValue(String::class.java)
-                val newPhotoUrl = snapshot.child("imageUrl").getValue(String::class.java)
-
-                if (newUserName != null) {
-                    userName = newUserName
-                    SharedPref.saveUsername(context, newUserName)
-                }
-                if (newName != null) {
-                    name = newName
-                    SharedPref.saveName(context, newName)
-                }
-                if (newPhotoUrl != null) {
-                    imageUrl = newPhotoUrl
-                    SharedPref.saveImage(context, newPhotoUrl)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("Profile page", "user data can't be fetched", error.toException())
-            }
+    LaunchedEffect(user) {
+        user?.let {
+            SharedPref.saveImage(context,it.imageUrl ?: SharedPref.getImage(context))
+            SharedPref.saveUsername(context,it.userName)
+            SharedPref.saveName(context,it.name)
         }
-
-        databaseRef.addValueEventListener(listener)
-
-        onDispose {
-            databaseRef.removeEventListener(listener)
-        }
-
     }
+
+
 
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -203,7 +178,8 @@ fun Profile(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
             ) {
-                ProfileHeader(imageUrl, name)
+                user?.let { ProfileHeader(it.imageUrl?:"",it.name) }
+
                 LazyColumn(
                     contentPadding = PaddingValues(8.dp)
                 ) {
@@ -432,15 +408,7 @@ fun ProfileTopAppBar(onOpenDrawer: () -> Unit) {
                 )
             }
         }
-//        title = { Text("Profile", modifier = Modifier.padding(8.dp))},
-//        navigationIcon = {
-//            Icon(
-//                imageVector = Icons.Default.Menu,
-//                contentDescription = "Menu",
-//                modifier = Modifier.clickable {
-//                    onOpenDrawer()
-//                }
-//            )
-//        }
+
+
     )
 }
