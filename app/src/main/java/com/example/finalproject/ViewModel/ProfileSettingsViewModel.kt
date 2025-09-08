@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.finalproject.Model.ProfileUiState
 import com.example.finalproject.Model.SharedPref
@@ -16,6 +17,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.launch
 
 class ProfileSettingsViewModel(
     private val repo : UserRepository
@@ -117,31 +119,20 @@ class ProfileSettingsViewModel(
 
     fun updatePassword(currentPassword : String,
                        newPassword : String){
+        viewModelScope.launch {
+            val result = repo.updatePasswordInDb(currentPassword,newPassword)
 
-        userId?.let {
-
-            val user = FirebaseAuth.getInstance().currentUser
-            val email = user?.email ?: return
-
-            val credentials = EmailAuthProvider.getCredential(email,currentPassword)
-
-            user.reauthenticate(credentials).addOnCompleteListener{reauthTask ->
-
-                if(reauthTask.isSuccessful){
-                    user.updatePassword(newPassword)
-                        .addOnCompleteListener{
-                            updateTask ->
-                            if(updateTask.isSuccessful){
-                                Log.d("password update","successful")
-                            }else{
-                                Log.d("password update","failed")
-                            }
-                        }
+                if(result.isSuccess){
+                    _uiState.value = _uiState.value.copy(message = "Password updated successfully")
                 }else{
-                    Log.d("password update","reauth failed")
+                    _uiState.value = _uiState.value
+                        .copy(message = "Error : ${result.exceptionOrNull()?.message}")
                 }
-            }
         }
+    }
+
+    fun clearMessage(){
+        _uiState.value = _uiState.value.copy(message = null)
     }
 
 

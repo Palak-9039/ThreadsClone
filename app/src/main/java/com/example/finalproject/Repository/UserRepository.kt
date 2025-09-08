@@ -6,6 +6,7 @@ import com.example.finalproject.Model.SharedPref
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.tasks.await
 
 class UserRepository(private val context : Context) {
 
@@ -52,30 +53,26 @@ class UserRepository(private val context : Context) {
     }
 
 
-    fun updatePasswordInDb(
+    suspend fun updatePasswordInDb(
         currentPassword : String,
         newPassword : String,
-        onSuccess : () -> Unit,
-        onError : (String)-> Unit
-    ){
-        val user = FirebaseAuth.getInstance().currentUser ?: return
-        val email = user?.email ?: return
+    ) : Result<Unit>{
 
-        val credentials = EmailAuthProvider.getCredential(email,currentPassword)
+        val user = FirebaseAuth.getInstance().currentUser ?: return Result.failure(Exception("User not logged in"))
+        val email = user?.email ?: return Result.failure(Exception("No email found"))
 
-        user.reauthenticate(credentials).addOnCompleteListener{reauthTask ->
-            if(reauthTask.isSuccessful){
-                user.updatePassword(newPassword).addOnCompleteListener { updateTask ->
-                    if(updateTask.isSuccessful){
-                        onSuccess()
-                    }else{
-                        onError(updateTask.exception?.message ?: "Failed to update password")
-                    }
-                }
-            }else{
-                onError(reauthTask.exception?.message ?: "Re-authentication failed")
-            }
+        return try {
+            val credentials = EmailAuthProvider.getCredential(email,currentPassword)
+
+            user.reauthenticate(credentials).await()
+            user.updatePassword(newPassword).await()
+
+            return Result.success(Unit)
+        }catch (e : Exception){
+            Result.failure(e)
         }
+
+
     }
 
 

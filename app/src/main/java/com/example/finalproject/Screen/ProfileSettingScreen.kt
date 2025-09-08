@@ -43,6 +43,7 @@ import com.example.finalproject.ImageUploading.uploadImageToCloudinary
 import com.example.finalproject.R
 import com.example.finalproject.ViewModel.ProfileSettingsViewModel
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.LaunchedEffect
 import com.example.finalproject.Repository.UserRepository
 
 
@@ -73,6 +74,12 @@ fun ProfileSettingScreen(){
 
 
 
+    LaunchedEffect(state.message) {
+        state.message?.let {message ->
+            Toast.makeText(context,message,Toast.LENGTH_SHORT).show()
+            viewModel.clearMessage()
+        }
+    }
 
 
 
