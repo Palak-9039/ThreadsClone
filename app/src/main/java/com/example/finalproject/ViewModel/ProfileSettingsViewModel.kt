@@ -1,12 +1,14 @@
 package com.example.finalproject.ViewModel
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.finalproject.Model.ProfileUiState
 import com.example.finalproject.Model.SharedPref
@@ -40,7 +42,8 @@ class ProfileSettingsViewModel(
 
 //        if (userId != null) {
 //
-//        databaseRef.child(userId).addValueEventListener(
+//
+    //        databaseRef.child(userId).addValueEventListener(
 //            object : ValueEventListener {
 //                override fun onDataChange(snapshot: DataSnapshot) {
 //                    val newUrl = snapshot.child("imageUrl").getValue(String::class.java)
@@ -82,12 +85,27 @@ class ProfileSettingsViewModel(
 
     // updating user profile details
 
-    fun updatePhoto(newPhotoUrl : String){
+    fun updatePhoto(newPhotoUrl : Uri?){
         val userId = repo.getUserId() ?: return
 
-        if(!newPhotoUrl.isNullOrEmpty()){
-            repo.updatePhotoInDb(userId,newPhotoUrl){
-                _uiState.value = _uiState.value.copy(photoUrl = newPhotoUrl)
+        if(newPhotoUrl == null){
+            _uiState.value = _uiState.value.copy(message = "No image selected")
+            return
+        }
+
+        viewModelScope.launch {
+           val result = repo.updateProfilePhoto(userId,newPhotoUrl)
+
+            if(result.isSuccess){
+                val url = result.getOrNull()
+                _uiState.value = _uiState.value.copy(
+                    photoUrl = url,
+                    message = "Image updated successfully"
+                )
+            }else   {
+                _uiState.value = _uiState.value.copy(
+                    message ="Failed: ${result.exceptionOrNull()?.message}"
+                )
             }
         }
     }

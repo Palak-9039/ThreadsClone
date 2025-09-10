@@ -1,12 +1,17 @@
 package com.example.finalproject.Repository
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import com.example.finalproject.ImageUploading.uploadImageToCloudinary
 import com.example.finalproject.Model.SharedPref
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 class UserRepository(private val context : Context) {
 
@@ -41,16 +46,7 @@ class UserRepository(private val context : Context) {
             }
     }
 
-    fun updatePhotoInDb(userId : String, newPhotoUrl : String, onDone: ()-> Unit){
-        db.child(userId).child("imageUrl").setValue(newPhotoUrl)
-            .addOnSuccessListener {
-                saveImage(newPhotoUrl)
-                onDone()
-            }
-            .addOnFailureListener{
-                Log.e("update photo","photo couldn't be updated in database",it)
-            }
-    }
+
 
 
     suspend fun updatePasswordInDb(
@@ -74,6 +70,59 @@ class UserRepository(private val context : Context) {
 
 
     }
+
+
+    suspend fun updateProfilePhoto(userId:String, imageRef: Uri?) : Result<String>{
+
+      return try {
+
+          if(imageRef == null){
+             return Result.failure(IllegalArgumentException("ImageRef cannot be null"))
+          }
+            val url = uploadProfileImageToCloudinary(imageRef)
+            updatePhotoInDb(userId, url)
+            saveImage(url)
+
+            Result.success(url)
+        }catch (e : Exception){
+            Result.failure(e)
+        }
+
+    }
+
+    //update image in database
+    private suspend fun updatePhotoInDb(userId : String, newPhotoUrl : String){
+        db.child(userId)
+            .child("imageUrl")
+            .setValue(newPhotoUrl)
+            .await()
+
+    }
+
+
+
+    // upload image to cloudinary
+   private suspend fun uploadProfileImageToCloudinary(imageRef : Uri?): String =
+        suspendCoroutine{ continuation ->
+
+        uploadImageToCloudinary(
+            context,
+            imageRef!!,
+            "296176452574737",
+            "qQPbMgW7Uih0pGZY4NqHjIqbfiI",
+            "dummy"
+        ){ url ->
+            if(url != null){
+                Log.d("cloudinary response from profile","image uploaded successfully : ${url}")
+                continuation.resume(url)
+            } else {
+                Log.d("cloudinary response from profile","Image upload failed") // Debugging log
+                continuation.resumeWithException(Exception("Cloudinary upload failed"))
+            }
+        }
+        }
+
+
 
 
 }

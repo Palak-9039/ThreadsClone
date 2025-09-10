@@ -159,25 +159,7 @@ fun ProfileSettingScreen(){
                     Toast.makeText(context,"please select a photo",Toast.LENGTH_SHORT).show()
                 }else{
                     println("final image uri before upload ${imageRef}")
-                    uploadImageToCloudinary(
-                        context,
-                        imageRef!!,
-                        "296176452574737",  
-                        "qQPbMgW7Uih0pGZY4NqHjIqbfiI",
-                        "dummy"
-                    ){ url ->
-                        if(url != null){
-                            Log.d("cloudinary response from profile","image uploaded successfully : ${url}")
-
-                            //updating ui state
-                            viewModel.onPhotoUrlChanged(url)
-                            //updating in database
-                            viewModel.updatePhoto(url)
-
-                        } else {
-                            Log.d("cloudinary response from profile","Image upload failed") // Debugging log
-                        }
-                    }
+                       viewModel.updatePhoto(imageRef)
                 }
             } 
         ) {
