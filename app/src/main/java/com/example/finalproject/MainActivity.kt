@@ -47,8 +47,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.finalproject.Model.SharedPref
+import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.ViewModel.ThreadViewModel
+import com.example.finalproject.test.Counter
 import com.onesignal.OneSignal
 import kotlinx.coroutines.launch
 
@@ -83,7 +85,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    navigation()
+                    ProfileSettingScreen()
                 }
             }
         }
