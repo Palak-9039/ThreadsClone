@@ -93,5 +93,8 @@ dependencies {
     implementation("com.google.accompanist:accompanist-pager:0.33.2-alpha")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.33.2-alpha")
 
+    implementation(platform("androidx.compose:compose-bom:2025.05.00"))
+
+
 
 }

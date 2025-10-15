@@ -96,7 +96,7 @@ fun register(navController: NavController, authViewModel: AuthViewModel) {
         }
 
 
-        var launcher =
+        val launcher =
             rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri ->
                 if (uri != null) {
                     println("Selected Image URI: $uri") // Debugging log
@@ -107,7 +107,7 @@ fun register(navController: NavController, authViewModel: AuthViewModel) {
             }
 
 
-        var permissionLauncher = rememberLauncherForActivityResult(
+        val permissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
@@ -142,7 +142,7 @@ fun register(navController: NavController, authViewModel: AuthViewModel) {
                     .size(80.dp)
                     .clip(CircleShape)
                     .clickable {
-                        var isGranted = ContextCompat.checkSelfPermission(
+                        val isGranted = ContextCompat.checkSelfPermission(
                             context,
                             requestToPermission
                         ) == PackageManager.PERMISSION_GRANTED

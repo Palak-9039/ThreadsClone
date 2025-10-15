@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -63,7 +64,10 @@ import com.example.finalproject.ViewModel.ThreadViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.firebase.auth.FirebaseAuth
-import org.w3c.dom.Comment
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -114,6 +118,58 @@ fun Home(
     var isRefreshing by remember { mutableStateOf(false) }
     val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing)
 
+    val context = LocalContext.current
+
+
+    var userName by remember { mutableStateOf(SharedPref.getUserName(context)) }
+    var imageRef by remember { mutableStateOf(SharedPref.getImage(context)) }
+//    var name by remember { mutableStateOf(SharedPref.getName(context)) }
+
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+    val databaseRef = remember {
+        FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(userId)
+    }
+
+    DisposableEffect(userId) {
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newUsername = snapshot.child("userName").getValue(String::class.java)
+                val newImage = snapshot.child("imageUrl").getValue(String::class.java)
+                val newName = snapshot.child("name").getValue(String::class.java)
+
+
+                if (newUsername != null) {
+                    userName = newUsername
+                    SharedPref.saveUsername(context, newUsername)
+                }
+                if (newImage != null) {
+                    imageRef = newImage
+                    SharedPref.saveImage(context, newImage)
+                }
+//                if(newName != null){
+//                    name = newName
+//                    SharedPref.saveName(context,newName)
+//                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Profile Update", "Failed to fetch user data", error.toException())
+            }
+        }
+
+
+        databaseRef.addValueEventListener(listener)
+
+        onDispose {
+            databaseRef.removeEventListener(listener)
+        }
+    }
+
+
     LaunchedEffect(isRefreshing) {
         Log.d("SwipeRefresh", "isRefreshing: $isRefreshing")
         Log.d("SwipeRefresh", "swipeRefreshState.isRefreshing: ${swipeRefreshState.isRefreshing}")
@@ -150,7 +206,7 @@ fun Home(
                                 .padding(8.dp)
                         ) {
                             AsyncImage(
-                                model = SharedPref.getImage(LocalContext.current),
+                                model = imageRef,
                                 contentDescription = "Profile image",
                                 placeholder = painterResource(R.drawable.profile_image),
                                 modifier = Modifier
@@ -161,7 +217,7 @@ fun Home(
                             Spacer(Modifier.width(4.dp))
                             Column {
                                 Text(
-                                    text = SharedPref.getName(LocalContext.current),
+                                    text = userName ?: "Guest",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
@@ -305,7 +361,7 @@ fun threadItem(
                 Icon(
                     imageVector = Icons.Outlined.ModeComment,
                     contentDescription = "comment",
-                    tint = MaterialTheme.colorScheme.onSecondary ,
+                    tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
