@@ -15,4 +15,5 @@ sealed class Screens(
     object OtherProfile:Screens("other-profile")
     object CommentsScreen:Screens("comments")
     object ProfileSettingScreen: Screens("profile_settings")
+    object EditProfileScreen: Screens("edit_profile")
 }

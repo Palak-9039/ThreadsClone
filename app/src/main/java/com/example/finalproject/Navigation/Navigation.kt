@@ -11,6 +11,7 @@ import com.example.finalproject.Screen.Profile
 import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.Screens
 import com.example.finalproject.Screen.AddThread
+import com.example.finalproject.Screen.EditProfile
 import com.example.finalproject.Screen.bottomNavigation
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.Screen.login
@@ -20,6 +21,7 @@ import com.example.finalproject.Screen.search
 import com.example.finalproject.Screen.splash
 import com.example.finalproject.ViewModel.AuthViewModel
 import com.example.finalproject.ViewModel.HomeViewModel
+import com.example.finalproject.ViewModel.ProfileSettingsViewModel
 import com.example.finalproject.ViewModel.SearchViewModel
 import com.example.finalproject.ViewModel.ThreadViewModel
 import com.example.finalproject.ViewModel.UserViewModel
@@ -32,6 +34,7 @@ fun navigation (){
     val homeViewModel : HomeViewModel = viewModel()
     val userViewModel : UserViewModel = viewModel() 
     val searchViewModel : SearchViewModel = viewModel()
+    val profileSettingsViewmodel : ProfileSettingsViewModel = viewModel()
 
     NavHost(navController = navController,startDestination = Screens.Splash.route){
         composable(Screens.Splash.route){
