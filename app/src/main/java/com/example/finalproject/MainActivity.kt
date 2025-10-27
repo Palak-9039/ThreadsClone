@@ -46,7 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigation.Navigation
 import com.example.finalproject.Model.SharedPref
+import com.example.finalproject.Screen.ChangePasswordScreen
+import com.example.finalproject.Screen.EditProfileScreen
 import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.ViewModel.ThreadViewModel
@@ -85,7 +88,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ProfileSettingScreen()
+                    ChangePasswordScreen({})
                 }
             }
         }

@@ -89,12 +89,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.finalproject.Repository.UserRepository
 
 
 @SuppressLint("InlinedApi")
 @Composable
-fun ProfileSettingScreen(){
+fun ProfileSettingScreen(
+    navController:NavController
+){
     val context = LocalContext.current
 
     val viewModel : ProfileSettingsViewModel = viewModel(
@@ -169,7 +172,10 @@ fun ProfileSettingScreen(){
 
     Scaffold(
         topBar = {
-            TopBarProfileSettings()
+            TopBarProfileSettings(
+                screenName = "Settings",
+                onBackClick = {navController.popBackStack()}
+            )
         }
     ) { paddingValues ->
 
@@ -179,31 +185,7 @@ fun ProfileSettingScreen(){
                 .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ){
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                ) {
-                    AsyncImage(
-                        model = state.photoUrl ?: R.drawable.profile_image,
-                        contentDescription = "profile photo",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .clickable { }
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "profile image",
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .align(Alignment.BottomEnd)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .padding(6.dp)
-                            .size(20.dp),
-                        tint = Color.White
-                    )
 
-                }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -266,7 +248,8 @@ fun ProfileSettingScreen(){
                             Icon(
                                 imageVector = Icons.Default.ArrowForwardIos,
                                 contentDescription = "Go to Profile Settings",
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(16.dp)
+                                    .clickable { navController.navigate(Screens.EditProfileScreen.route) },
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
 
@@ -621,7 +604,10 @@ fun ProfileSettingScreen(){
 
 
 @Composable
-fun TopBarProfileSettings(){
+fun TopBarProfileSettings(
+    onBackClick : ()-> Unit,
+    screenName : String
+){
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -645,7 +631,7 @@ fun TopBarProfileSettings(){
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center){
             Text(
-                text = "Settings",
+                text = screenName,
                 fontSize = 25.sp,
                 fontWeight = FontWeight.SemiBold
             )

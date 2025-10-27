@@ -11,7 +11,8 @@ import com.example.finalproject.Screen.Profile
 import com.example.finalproject.Screen.ProfileSettingScreen
 import com.example.finalproject.Screen.Screens
 import com.example.finalproject.Screen.AddThread
-import com.example.finalproject.Screen.EditProfile
+import com.example.finalproject.Screen.ChangePasswordScreen
+import com.example.finalproject.Screen.EditProfileScreen
 import com.example.finalproject.Screen.bottomNavigation
 import com.example.finalproject.Screen.commentScreen
 import com.example.finalproject.Screen.login
@@ -36,7 +37,7 @@ fun navigation (){
     val searchViewModel : SearchViewModel = viewModel()
     val profileSettingsViewmodel : ProfileSettingsViewModel = viewModel()
 
-    NavHost(navController = navController,startDestination = Screens.Splash.route){
+    NavHost(navController = navController,startDestination = Screens.ChangePasswordScreen.route){
         composable(Screens.Splash.route){
             splash(navController,authViewModel)
         }
@@ -66,7 +67,9 @@ fun navigation (){
             register(navController,authViewModel)
         }
         composable(Screens.ProfileSettingScreen.route){
-            ProfileSettingScreen()
+            ProfileSettingScreen(
+                navController = navController
+            )
         }
         composable(Screens.OtherProfile.route + "/{id}"){
             var id = it.arguments!!.get("id").toString()
@@ -75,9 +78,20 @@ fun navigation (){
                 otherprofile(navController,userViewModel,authViewModel,threadViewModel,id)
             }
         }
+        composable(Screens.EditProfileScreen.route){
+            EditProfileScreen(
+//                viewModel = profileSettingsViewmodel,
+//                navController = navController
+            )
+        }
         composable(Screens.CommentsScreen.route+ "/{threadId}"){
             var threadId = it.arguments!!.get("threadId").toString()
             commentScreen(threadId,navController,threadViewModel)
+        }
+        composable(Screens.ChangePasswordScreen.route){
+            ChangePasswordScreen(
+                onChangePasswordClick = {}
+            )
         }
     }
 }

@@ -1,24 +1,14 @@
 package com.example.finalproject.ViewModel
 
-import android.content.Context
 import android.net.Uri
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.finalproject.Model.ProfileUiState
-import com.example.finalproject.Model.SharedPref
 import com.example.finalproject.Repository.UserRepository
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 
 class ProfileSettingsViewModel(

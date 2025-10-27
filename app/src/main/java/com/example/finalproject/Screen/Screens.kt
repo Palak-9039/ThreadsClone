@@ -16,4 +16,5 @@ sealed class Screens(
     object CommentsScreen:Screens("comments")
     object ProfileSettingScreen: Screens("profile_settings")
     object EditProfileScreen: Screens("edit_profile")
+    object ChangePasswordScreen: Screens("change_password")
 }
